@@ -1,0 +1,250 @@
+#
+# Copyright 2025 The Apache Software Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+### HTTP Client Requests for mail-mcp
+###
+### MCP Server API (HTTP/SSE transport)
+@mcpServerUrl = http://localhost:8080
+
+### Elasticsearch API
+@elasticsearchUrl = http://localhost:9200
+
+##################################################
+### MCP Server HTTP/SSE Endpoints
+##################################################
+
+### Health check endpoint
+GET {{mcpServerUrl}}/health
+Accept: application/json
+
+### Connect to MCP server via SSE
+### This establishes a session and returns the messages endpoint
+GET {{mcpServerUrl}}/sse
+Accept: text/event-stream
+
+### Get MCP server capabilities (after connecting)
+### Note: Replace session_id with the one from SSE connection
+# POST {{mcpServerUrl}}/messages/?session_id=YOUR_SESSION_ID
+# Content-Type: application/json
+#
+# {
+#   "jsonrpc": "2.0",
+#   "id": 1,
+#   "method": "initialize",
+#   "params": {
+#     "protocolVersion": "2024-11-05",
+#     "capabilities": {},
+#     "clientInfo": {
+#       "name": "http-client",
+#       "version": "1.0.0"
+#     }
+#   }
+# }
+
+##################################################
+### Elasticsearch API
+##################################################
+
+### Get cluster health
+GET {{elasticsearchUrl}}/_cluster/health
+Accept: application/json
+
+### List all indices with document counts
+GET {{elasticsearchUrl}}/_cat/indices?v&h=index,docs.count,store.size
+Accept: text/plain
+
+### List all indices (detailed JSON)
+GET {{elasticsearchUrl}}/_cat/indices?format=json
+Accept: application/json
+
+### Get count of documents in all indices
+GET {{elasticsearchUrl}}/_all/_count
+Accept: application/json
+
+### Get count of documents in maven-dev index
+GET {{elasticsearchUrl}}/maven-dev/_count
+Accept: application/json
+
+### Get index mapping for maven-dev
+GET {{elasticsearchUrl}}/maven-dev/_mapping
+Accept: application/json
+
+### Get index settings for maven-dev
+GET {{elasticsearchUrl}}/maven-dev/_settings
+Accept: application/json
+
+### Search all documents in maven-dev (first 10)
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 10,
+  "query": {
+    "match_all": {}
+  }
+}
+
+### Search by subject keyword
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 5,
+  "query": {
+    "match": {
+      "subject": "release"
+    }
+  }
+}
+
+### Search for emails with JIRA references
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 10,
+  "query": {
+    "exists": {
+      "field": "jira_references"
+    }
+  }
+}
+
+### Search by contributor email address
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 10,
+  "query": {
+    "match": {
+      "from_address": "dev@maven.apache.org"
+    }
+  }
+}
+
+### Get specific message by message_id
+GET {{elasticsearchUrl}}/maven-dev/_doc/<your-message-id-here>
+Accept: application/json
+
+### Aggregation: Count emails by year
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "emails_by_year": {
+      "date_histogram": {
+        "field": "date",
+        "calendar_interval": "year"
+      }
+    }
+  }
+}
+
+### Aggregation: Top contributors by email count
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "top_contributors": {
+      "terms": {
+        "field": "from_address.keyword",
+        "size": 20,
+        "order": {
+          "_count": "desc"
+        }
+      }
+    }
+  }
+}
+
+### Aggregation: Most referenced JIRA issues
+GET {{elasticsearchUrl}}/maven-dev/_search
+Accept: application/json
+Content-Type: application/json
+
+{
+  "size": 0,
+  "aggs": {
+    "top_jira_issues": {
+      "terms": {
+        "field": "jira_references",
+        "size": 20,
+        "order": {
+          "_count": "desc"
+        }
+      }
+    }
+  }
+}
+
+### Delete an index (use with caution!)
+# DELETE {{elasticsearchUrl}}/test-index
+# Accept: application/json
+
+### Create a test index with mapping
+# PUT {{elasticsearchUrl}}/test-index
+# Accept: application/json
+# Content-Type: application/json
+#
+# {
+#   "mappings": {
+#     "properties": {
+#       "message": {
+#         "type": "text"
+#       },
+#       "timestamp": {
+#         "type": "date"
+#       }
+#     }
+#   }
+# }
+
+### Reindex documents from one index to another
+# POST {{elasticsearchUrl}}/_reindex
+# Accept: application/json
+# Content-Type: application/json
+#
+# {
+#   "source": {
+#     "index": "source-index"
+#   },
+#   "dest": {
+#     "index": "destination-index"
+#   }
+# }
+
+### Refresh index to make recent changes searchable
+POST {{elasticsearchUrl}}/maven-dev/_refresh
+Accept: application/json
+
+### Get Elasticsearch cluster stats
+GET {{elasticsearchUrl}}/_cluster/stats
+Accept: application/json
+
+### Get node information
+GET {{elasticsearchUrl}}/_nodes/stats
+Accept: application/json

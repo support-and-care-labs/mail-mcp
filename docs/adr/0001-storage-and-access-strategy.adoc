@@ -1,0 +1,481 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= ADR-0001: Storage and Access Strategy for Mailing List Data
+:toc:
+:toclevels: 3
+
+== Status
+
+Accepted
+
+**Decision Date**: 2025-01-16
+
+**Key Decision**: Elasticsearch selected as primary storage backend for initial implementation.
+
+== Context
+
+The mail-mcp project needs to make Apache Maven mailing list archives accessible to LLMs via MCP (Model Context Protocol). The data consists of 20+ years of email discussions (276+ monthly mbox files, ~743MB) from various Apache Maven mailing lists (dev@, users@, etc.).
+
+=== Data Characteristics
+
+* **Volume**: 743MB currently, growing monthly
+* **Format**: mbox (standard Unix mailbox format)
+* **Structure**: Email messages with threads (In-Reply-To, References headers)
+* **Source**: Apache Ponymail Foal REST API (https://lists.apache.org/api/mbox.lua)
+* **Update frequency**: New data arrives continuously (daily activity)
+
+=== Primary Use Case
+
+Enable LLMs to research Maven development discussion history and track decisions across time.
+
+**Core scenarios**:
+
+Decision research::
+  * "Has topic X been discussed?"
+  * "Was a decision made about feature Y?"
+  * "What alternatives were considered for approach Z?"
+
+Decision lifecycle tracking::
+  * Active discussions (no decision yet, alternatives being explored)
+  * Decisions reached (consensus documented, alternatives evaluated)
+  * Implementation announced (decision executed, release made)
+  * Decisions deprecated (no longer relevant, superseded by newer decisions)
+
+Temporal tracking::
+  * "When was feature X decided/implemented/released?"
+  * "What was discussed in Q4 2023 about topic Y?"
+  * "Show decisions made but not yet implemented"
+
+Cross-reference integration::
+  * Mail discussion → Jira issue (MAVEN-1234 references)
+  * Mail announcement → GitHub release/commit
+  * Mail decision → Confluence documentation
+  * Mail thread → Code implementation
+  * Future: Combine with other MCPs (Jira, GitHub, Confluence, codebase MCPs)
+
+=== Requirements
+
+. **Self-contained**: MCP should be deployable as a standalone unit
+. **Regenerable**: Complete system rebuild from source must be possible
+. **Containerized**: Must run in Docker/Kubernetes environments
+. **Query capabilities**:
+** Full-text search across email content
+** Metadata filtering (date, sender, subject, list)
+** Thread reconstruction and navigation
+** Decision indicator extraction (VOTE, consensus, agreed, RESOLVED)
+** External reference detection (JIRA-NNNN, GitHub PR #NNN, release versions)
+** Temporal queries (date ranges, decision timelines)
+** Potentially semantic/vector search for conceptual queries
+. **Performance**: Query responses suitable for LLM interaction (< 5s for typical queries)
+. **Multiple lists**: Support dev@, users@, and other Apache Maven lists
+. **Cross-MCP compatibility**: Design for integration with Jira, GitHub, Confluence MCPs
+
+=== Design Principles
+
+* **Data as cache**: mbox files and database are acceleration layers, not source of truth
+* **Source of truth**: Apache Mailing List Archive API
+* **Stateless application**: MCP logic is stateless; state lives in database
+* **Reset capability**: `reset --rebuild` must wipe and regenerate all data
+
+=== Architectural Approaches Considered
+
+Three main approaches were evaluated:
+
+1. **Remote-only**: Query Apache Ponymail API on-demand
+2. **In-memory**: Load mbox files into RAM with custom data structures
+3. **Database**: Import into persistent storage (Elasticsearch, Neo4j, SQLite)
+
+== Decision
+
+We will implement a **database-backed architecture using Elasticsearch** as the primary storage backend.
+
+=== Primary Backend: Elasticsearch
+
+**Chosen for initial implementation** based on use case alignment:
+
+* **Full-text search**: Core requirement for decision research queries
+* **Metadata extraction**: Excellent support for indexed fields (decision indicators, external references, temporal markers)
+* **Temporal queries**: Native date range filtering and aggregations
+* **Future extensibility**: Built-in vector search support for semantic queries
+* **Mature ecosystem**: Well-documented, widely deployed, strong tooling
+* **Performance**: Handles 743MB+ efficiently with room to scale
+* **Decision tracking**: Can model decision lifecycle via status fields and date ranges
+* **Cross-reference support**: Easy to index and query external references (JIRA-NNNN, PR #NNN)
+
+**Use case fit**:
+* ✅ "Has topic X been discussed?" → Full-text search
+* ✅ "Was decision made about Y?" → Metadata filtering (decision_status field)
+* ✅ "When was feature Z implemented?" → Temporal queries + external references
+* ✅ Thread reconstruction → Application logic using References/In-Reply-To
+* ✅ Cross-MCP integration → Store and query external IDs
+
+=== Alternative Backends (Future Consideration)
+
+**Neo4j** and **SQLite** remain documented as alternatives for specific scenarios:
+
+Neo4j:: Graph-focused scenarios if thread navigation becomes primary use case
+SQLite:: Truly embedded deployments without container infrastructure
+
+The architecture maintains a **storage interface abstraction** to allow backend switching if requirements change.
+
+=== Architecture Overview
+
+[source]
+----
+┌─────────────────────────────────────────────────────┐
+│  MCP Server (mail-mcp)                              │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  MCP Tools (search, retrieve, thread, sync)  │  │
+│  └──────────────────┬───────────────────────────┘  │
+│                     ↓                               │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  Storage Interface (abstract)                │  │
+│  └──────────────────┬───────────────────────────┘  │
+│         ↓           ↓           ↓                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │  Neo4j   │ │   ES     │ │  SQLite  │           │
+│  │ Storage  │ │ Storage  │ │ Storage  │           │
+│  └──────────┘ └──────────┘ └──────────┘           │
+└─────────────────────────────────────────────────────┘
+            ↓ (rebuild/sync)
+┌─────────────────────────────────────────────────────┐
+│  Apache Ponymail API                                │
+│  https://lists.apache.org/api/mbox.lua              │
+└─────────────────────────────────────────────────────┘
+----
+
+=== Storage Backend Selection
+
+==== Primary Option 1: Elasticsearch
+
+**Best for**: Full-text search, aggregations, general-purpose queries
+
+Rationale:
+* Excellent full-text search capabilities (inverted indices, relevance scoring)
+* Mature, well-documented, widely deployed
+* Supports vector search (for future semantic capabilities)
+* Handles 743MB+ datasets efficiently
+* Good aggregation support (e.g., "top contributors", "activity over time")
+
+Implementation considerations:
+* Thread reconstruction via application logic (query by References/In-Reply-To)
+* Index structure: One index per mailing list, documents = email messages
+* Metadata fields: from, to, subject, date, list, thread_id, message_id, in_reply_to
+
+==== Primary Option 2: Neo4j
+
+**Best for**: Thread navigation, relationship queries, graph analysis
+
+Rationale:
+* Native graph model perfectly represents email threads
+* Cypher queries excel at "show me this discussion tree"
+* Can analyze social graphs (who replies to whom)
+* Full-text search via built-in indices
+* Visualizing conversation flows
+
+Implementation considerations:
+* Node types: Message, Person, Thread
+* Relationships: REPLIES_TO, SENT_BY, PART_OF_THREAD
+* Properties on nodes: subject, body, date, list
+* Hybrid approach: Neo4j for relationships + ES for full-text (if both needed)
+
+==== Fallback Option: SQLite
+
+**Best for**: True self-contained deployment, development/testing
+
+Rationale:
+* Zero external dependencies (embedded in application)
+* No separate container/service required
+* Sufficient for moderate query loads
+* FTS5 provides acceptable full-text search
+
+Limitations:
+* Less powerful full-text search than ES
+* Thread queries require recursive CTEs (more complex)
+* Not ideal for concurrent access at scale
+
+=== Deployment Configuration
+
+==== Docker Compose (Recommended for Development)
+
+[source,yaml]
+----
+services:
+  mail-mcp:
+    build: .
+    environment:
+      STORAGE_BACKEND: elasticsearch  # or: neo4j, sqlite
+      ES_URL: http://elasticsearch:9200
+      NEO4J_URI: bolt://neo4j:7687
+    volumes:
+      - ./data:/app/data  # mbox cache
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: false
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: none
+    volumes:
+      - neo4j-data:/data
+----
+
+==== Kubernetes (Production)
+
+* MCP pods: Stateless deployment
+* Database: StatefulSet or managed service (Amazon ES, Neo4j Aura)
+* Persistent volumes: For mbox cache (optional, can rebuild)
+* Init containers: Run `sync` on first deployment
+
+=== Data Lifecycle Operations
+
+==== Initial Population
+
+[source,bash]
+----
+# On first deployment or after reset
+mcp-mail sync --initial \
+  --list dev@maven.apache.org \
+  --from 2002-11 \
+  --to 2025-01
+----
+
+. Download mbox files via `retrieve-mbox.groovy` (reuse existing script)
+. Parse mbox files and extract messages
+. Extract metadata and indicators (see Metadata Extraction below)
+. Build thread relationships (References/In-Reply-To headers)
+. Index into selected storage backend
+. Track sync status (last indexed date per list)
+
+==== Incremental Sync
+
+[source,bash]
+----
+# Daily/weekly sync
+mcp-mail sync --list dev@maven.apache.org
+----
+
+1. Query last indexed date for list
+2. Download new months since last sync
+3. Index new messages
+4. Update thread relationships
+
+==== Complete Reset
+
+[source,bash]
+----
+# Rebuild from scratch
+mcp-mail reset --rebuild --list dev@maven.apache.org
+----
+
+. Drop/clear database (ES indices or Neo4j graph)
+. Remove cached mbox files (optional, can reuse)
+. Re-run initial population
+. System ready to serve
+
+=== Metadata Extraction
+
+To support decision tracking and cross-reference queries, the indexing pipeline must extract:
+
+**Decision indicators**:
+
+* Vote markers: `[VOTE]`, `[RESULT]`, `+1`, `-1`, `+0`
+* Decision keywords: "decided", "consensus", "agreed", "RESOLVED", "WONTFIX"
+* Action items: "TODO", "ACTION:", "implemented in"
+* Status markers: "CLOSED", "REOPENED", "deprecated"
+
+**External references**:
+
+* Jira issues: `MAVEN-1234`, `MNG-5678`
+* GitHub: PR references `#123`, commit SHAs
+* Confluence: Wiki page URLs
+* Release versions: `4.0.0`, `maven-3.9.0`
+* CVE references: `CVE-2023-1234`
+
+**Temporal markers**:
+
+* Decision dates (extract from "decided on YYYY-MM-DD")
+* Release dates (from announcement subjects)
+* Milestone references ("for 4.0 release")
+
+**Implementation approach**:
+
+* Regex patterns for structured extraction
+* Store as indexed fields for filtering
+* Link references to enable cross-MCP queries
+* Future: NER (Named Entity Recognition) for more sophisticated extraction
+
+=== Query Interface (MCP Tools)
+
+The MCP will expose tools such as:
+
+* `search_emails`: Full-text search with filters (date, sender, list)
+* `get_thread`: Retrieve complete email thread by message ID
+* `get_message`: Retrieve single email by ID
+* `list_threads`: Browse recent/active threads
+* `sync_list`: Trigger manual sync of a mailing list
+
+== Consequences
+
+=== Positive
+
+* **Flexible deployment**: ES for search-heavy, Neo4j for thread-heavy, SQLite for embedded
+* **Regenerable**: Can rebuild entire system from Apache API
+* **Performant**: Database acceleration enables fast queries on 20+ years of data
+* **Scalable**: ES/Neo4j handle growth beyond current 743MB
+* **Container-native**: Docker Compose for dev, K8s for production
+* **Thread-aware**: Proper representation of email discussions as graphs/relationships
+* **Multiple backends**: Can choose optimal storage per deployment scenario
+
+=== Negative
+
+* **Infrastructure complexity**: Requires running ES or Neo4j container
+* **Resource overhead**: ES/Neo4j consume significant RAM (1GB+ each)
+* **Sync latency**: Initial population takes time (parse 743MB, index)
+* **Storage backend abstraction**: More code to maintain multiple implementations
+* **Database management**: Backup/restore, monitoring, tuning
+
+=== Neutral
+
+* **Hybrid approach possible**: Can run both ES (search) + Neo4j (threads) if needed
+* **SQLite remains option**: For truly constrained environments
+* **Vector search deferred**: Can add embedding/semantic search later if needed
+* **Rate limiting**: Apache API calls need throttling during bulk sync
+
+=== Migration Path
+
+1. **Phase 1**: Implement Elasticsearch backend (search-focused)
+2. **Phase 2**: Add thread reconstruction logic in application layer
+3. **Phase 3**: Implement Neo4j backend (graph-focused)
+4. **Phase 4**: Evaluate hybrid ES+Neo4j if both needed
+5. **Phase 5**: Add SQLite backend for embedded use cases
+
+== Open Questions
+
+1. **Vector search**: Should we plan for semantic search from the start?
+   - **Context**: Primary use case involves conceptual queries ("How do they handle X?", "Find discussions about approach Y") which benefit from semantic search
+   - **Arguments for early implementation**:
+     * Conceptual/semantic queries are core to the use case
+     * Elasticsearch supports vector fields natively
+     * Enables "similar discussions" queries
+     * Better matches LLM query patterns
+   - **Arguments for deferring**:
+     * Adds complexity (embedding generation, vector storage, similarity tuning)
+     * Keyword + metadata search may be sufficient initially
+     * Can be added incrementally (re-index with embeddings later)
+     * Focus on core functionality first
+   - **Recommendation**: **Defer but design for it**
+     * Start with keyword/metadata search
+     * Design schema with embedding field placeholder
+     * Re-evaluate after testing with real queries
+     * Consider when: Core search working, query patterns observed, integration with LLM established
+
+2. **Multi-list strategy**: One database for all lists, or separate instances?
+   - Recommendation: **Single database**, separate indices/namespaces per list
+
+3. **Thread algorithm**: How to handle malformed/missing References headers?
+   - Recommendation: **Fall back to subject line matching** with fuzzy logic
+
+4. **Update strategy**: Push (webhook) or pull (periodic sync)?
+   - Recommendation: **Pull initially** (cron/periodic), push as enhancement
+
+5. **Citation/Quote Handling**: How should we handle quoted content in email replies?
+   - **Problem**: Email threads often contain quote pyramids where previous messages are repeatedly quoted, leading to:
+     * Storage bloat (same text repeated across multiple emails)
+     * Context pollution (LLMs see duplicate content, wasting tokens)
+     * Search relevance issues (same content appears in multiple results)
+     * Attribution confusion (difficulty determining who said what originally)
+   - **Potential approaches**:
+     * Store both full text and "effective content" (new content only)
+     * Detect quoted sections using standard markers (`>`, `|`, attribution lines)
+     * Maintain citation graph showing which messages quote which
+     * Filter quoted content by default in LLM retrieval
+     * Optionally expose full content when needed for verification
+   - **Storage format considerations**:
+     * `body_full`: Complete email including all quotes
+     * `body_effective`: Only new content contributed by this message
+     * `quotes`: Array of references to quoted messages with snippets
+     * Index both separately for different search scenarios
+   - **Detection challenges**:
+     * Standard quote markers (>, |, "On [date] wrote:")
+     * Code blocks that may contain > characters
+     * Nested quotes from long threads
+     * Top-posting vs. inline reply styles
+     * Non-standard email clients
+   - **Benefits of filtering**:
+     * 30-50% reduction in indexed content (estimated)
+     * Better token efficiency for LLM queries
+     * Improved search result relevance
+     * Clearer attribution and thread reconstruction
+   - **Implementation options**:
+     * Regex-based quote detection (simpler, faster)
+     * ML-based detection (more accurate, more complex)
+     * Library-based parsing (e.g., email-reply-parser)
+   - **Recommendation**: **Implement dual storage** (body_full + body_effective) with quote detection during indexing. Default LLM queries use body_effective; full text remains accessible for verification. Defer decision on detection method (regex vs. ML) until implementation phase. This deserves thorough testing with real Maven mailing list data to tune detection accuracy.
+   - **Future consideration**: May warrant separate ADR-0002 once implementation details are resolved
+
+6. **Cross-posting and multi-list deduplication**: How should we handle messages sent to multiple lists simultaneously?
+   - **Context**: Starting with dev@maven.apache.org only, but eventually will expand to users@, announce@, etc.
+   - **Problem**: Messages are often cross-posted to multiple Apache mailing lists:
+     * Announcements sent to dev@, users@, announce@
+     * Important discussions cross-posted between dev@ and users@
+     * Same Message-ID delivered to multiple lists
+     * Currently would result in duplicate storage and indexing
+   - **Storage implications**:
+     * Without deduplication: Same message stored N times (once per list)
+     * With deduplication: Store once, track which lists received it
+     * Estimated 10-20% storage reduction for cross-posted messages
+   - **Proposed approach** (for future consideration):
+     * Store one message per unique Message-ID
+     * Track lists as array: `lists: ["dev@", "users@", "announce@"]`
+     * Preserve list-specific metadata (List-Id, archive URLs, received dates)
+     * Filter by list during queries: `lists CONTAINS "dev@maven.apache.org"`
+   - **Data model example**:
+     * Elasticsearch: `{message_id: "...", lists: [...], list_metadata: {...}}`
+     * Neo4j: `(msg:Message)-[:SENT_TO]->(list:MailingList)`
+   - **Benefits**:
+     * Storage and indexing efficiency
+     * Consistency across list views
+     * Cross-list analytics capability ("messages on both dev@ and users@")
+     * Thread integrity across lists
+   - **Challenges**:
+     * List-specific headers differ per delivery
+     * Threading context may differ per list
+     * Detection requires matching Message-ID across mbox files
+   - **Implementation notes**:
+     * During indexing, check if Message-ID exists before creating new entry
+     * If exists, append list to existing message's lists array
+     * Store list-specific metadata separately per list
+   - **Recommendation**: **Defer until expanding beyond dev@ list**.
+     Initial implementation focuses on dev@maven.apache.org only.
+     Design storage schema to accommodate `lists` array for future expansion.
+     Revisit when adding second mailing list (users@ or announce@).
+
+== References
+
+* https://lists.apache.org/[Apache Mailing List Archives]
+* https://github.com/apache/infrastructure-ponymail-foal[Apache Ponymail Foal]
+* https://www.elastic.co/elasticsearch/[Elasticsearch]
+* https://neo4j.com/[Neo4j Graph Database]
+* https://www.rfc-editor.org/rfc/rfc5322.html[RFC 5322: Internet Message Format]
+* https://www.rfc-editor.org/rfc/rfc2822.html[RFC 2822: In-Reply-To and References headers]

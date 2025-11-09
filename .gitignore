@@ -1,0 +1,53 @@
+# Data files (regenerable via retrieve-mbox script)
+data/
+tmp/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# direnv
+.envrc
+
+# Poetry
+poetry.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE
+.claude/
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Docker
+.dockerignore
+docker-compose.override.yml

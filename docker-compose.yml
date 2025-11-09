@@ -1,0 +1,106 @@
+#
+# Copyright 2025 The Apache Software Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Docker Compose configuration for mail-mcp development
+
+services:
+  # Elasticsearch for storing and searching email data
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: mail-mcp-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=mail-mcp-cluster
+      - node.name=mail-mcp-node
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mail-mcp-network
+
+  # Kibana for data visualization and exploration
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: mail-mcp-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=mail-mcp-kibana
+      - SERVER_HOST=0.0.0.0
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mail-mcp-network
+
+  # mail-mcp MCP server
+  mail-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mail-mcp-server
+    environment:
+      - MAIL_MCP_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
+      - MAIL_MCP_DATA_PATH=/app/data
+      - MAIL_MCP_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount data directory for mbox files
+      - ./data:/app/data:ro
+      # Mount source code for development (optional)
+      - ./src:/app/src:ro
+      # Mount maven-jira-projects.toml
+      - ./maven-jira-projects.toml:/app/maven-jira-projects.toml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - mail-mcp-network
+    restart: unless-stopped
+    # HTTP transport exposed on port 8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  es-data:
+    driver: local
+
+networks:
+  mail-mcp-network:
+    driver: bridge

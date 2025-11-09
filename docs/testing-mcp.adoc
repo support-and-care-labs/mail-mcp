@@ -1,0 +1,434 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Testing the MCP Server Interactively
+:toc:
+:toclevels: 2
+
+== Prerequisites
+
+Before testing, ensure:
+
+1. **Elasticsearch is running**:
++
+[source,bash]
+----
+docker compose up -d elasticsearch
+# Wait for it to be healthy
+curl http://localhost:9200/_cluster/health
+----
+
+2. **Some data is indexed** (at least one mbox file):
++
+[source,bash]
+----
+# Download and index a recent month
+poetry run retrieve-mbox --date 2024-12
+poetry run index-mbox data/dev/2024-12.mbox
+----
+
+3. **Verify data is indexed**:
++
+[source,bash]
+----
+curl http://localhost:9200/maven-dev/_count
+# Should show: {"count": <some number>, ...}
+----
+
+== Option 1: MCP Inspector (Recommended)
+
+The official MCP Inspector provides a web UI for testing MCP servers interactively.
+
+=== Installation and Launch
+
+[source,bash]
+----
+# From the mail-mcp directory
+npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
+----
+
+This will:
+
+1. Start the MCP server
+2. Launch a web interface (usually http://localhost:5173)
+3. Show all available tools
+4. Allow you to test each tool interactively
+
+=== Using the Inspector
+
+1. **Open your browser** to the URL shown (typically http://localhost:5173)
+
+2. **Explore available tools** - You should see:
+   - `search_emails`
+   - `get_message`
+   - `get_thread`
+   - `find_references`
+
+3. **Test a tool** - For example, try `search_emails`:
+   - Click on `search_emails`
+   - Fill in parameters:
+     * `query`: "release"
+     * `size`: 5
+   - Click "Call Tool"
+   - View the formatted response
+
+4. **Try other tools**:
+   - Use a Message-ID from search results with `get_message`
+   - Use the same Message-ID with `get_thread` to see the conversation
+   - Search for a JIRA reference like "MNG-1234" with `find_references`
+
+=== Example Test Sequence
+
+[source]
+----
+1. search_emails
+   - query: "maven 4"
+   - size: 3
+   → Returns recent discussions about Maven 4
+
+2. Copy a Message-ID from results (e.g., <abc123@apache.org>)
+
+3. get_message
+   - message_id: <abc123@apache.org>
+   → Shows full message with metadata
+
+4. get_thread
+   - message_id: <abc123@apache.org>
+   → Shows entire conversation thread
+
+5. find_references
+   - reference: "MNG-7891"
+   - reference_type: "jira"
+   → Shows all emails mentioning MNG-7891
+----
+
+== Option 2: Direct Python Testing
+
+You can test the tools directly in Python without the MCP protocol layer:
+
+[source,bash]
+----
+poetry run python
+----
+
+Then in the Python REPL:
+
+[source,python]
+----
+import asyncio
+from mail_mcp.server.tools import search_emails, get_message, find_references
+
+# Test search
+async def test():
+    # Search for emails
+    result = await search_emails(
+        query="release",
+        size=5
+    )
+    print(result)
+    print("\n" + "="*80 + "\n")
+
+    # Find JIRA references
+    result = await find_references(
+        reference="MNG-1234",
+        reference_type="jira",
+        size=3
+    )
+    print(result)
+
+asyncio.run(test())
+----
+
+=== Example Python Test Script
+
+Create a file `test_tools.py`:
+
+[source,python]
+----
+#!/usr/bin/env python
+"""Interactive test script for MCP tools."""
+
+import asyncio
+from mail_mcp.server.tools import search_emails, get_message, get_thread, find_references
+
+
+async def main():
+    """Run interactive tests."""
+    print("=== Testing MCP Tools ===\n")
+
+    # Test 1: Search
+    print("1. Searching for 'maven 4.0'...")
+    result = await search_emails(query="maven 4.0", size=3)
+    print(result)
+    print("\n" + "="*80 + "\n")
+
+    # Test 2: Find JIRA references
+    print("2. Finding emails about MNG-7891...")
+    result = await find_references(reference="MNG-7891", reference_type="jira")
+    print(result)
+    print("\n" + "="*80 + "\n")
+
+    # Test 3: Search with filters
+    print("3. Searching for emails with votes...")
+    result = await search_emails(query="release", has_vote=True, size=3)
+    print(result)
+    print("\n" + "="*80 + "\n")
+
+    # Test 4: Search with date filter
+    print("4. Searching emails from 2024...")
+    result = await search_emails(
+        query="dependency",
+        from_date="2024-01-01",
+        to_date="2024-12-31",
+        size=3
+    )
+    print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+----
+
+Then run:
+
+[source,bash]
+----
+poetry run python test_tools.py
+----
+
+== Option 3: MCP Client Testing with Claude Desktop
+
+Once you have data indexed, you can test with Claude Desktop:
+
+1. **Add configuration** to `~/Library/Application Support/Claude/claude_desktop_config.json`:
++
+[source,json]
+----
+{
+  "mcpServers": {
+    "maven-mail": {
+      "command": "poetry",
+      "args": ["run", "maven-mail-mcp"],
+      "cwd": "/Users/ascheman/wrk/maven/maven-support-and-care/maven-mcps/mail-mcp",
+      "env": {
+        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
+        "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
+        "MAIL_MCP_LOG_LEVEL": "DEBUG"
+      }
+    }
+  }
+}
+----
+
+2. **Restart Claude Desktop** completely (Quit and reopen)
+
+3. **Check MCP servers** - Look for the hammer icon or MCP indicator
+
+4. **Test with queries**:
+   - "Search the Maven mailing list for discussions about version 4.0"
+   - "Find all emails mentioning MNG-1234"
+   - "Show me recent votes on the dev mailing list"
+
+5. **Check logs** if issues occur:
+   - macOS: `~/Library/Logs/Claude/mcp*.log`
+   - Look for server startup and tool calls
+
+== Option 4: Simple Elasticsearch Query Testing
+
+Test that your data is properly indexed and searchable:
+
+[source,bash]
+----
+# Count indexed emails
+curl http://localhost:9200/maven-dev/_count
+
+# Search for a term
+curl -X POST http://localhost:9200/maven-dev/_search \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": {
+      "match": {
+        "subject": "release"
+      }
+    },
+    "size": 3
+  }'
+
+# Find emails with JIRA references
+curl -X POST http://localhost:9200/maven-dev/_search \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "query": {
+      "exists": {
+        "field": "jira_references"
+      }
+    },
+    "size": 5
+  }'
+
+# Get a specific message
+curl http://localhost:9200/maven-dev/_doc/<message-id>
+----
+
+== Troubleshooting
+
+=== No Results Found
+
+Check index status:
+
+[source,bash]
+----
+# List all indices
+curl http://localhost:9200/_cat/indices?v
+
+# Check specific index
+curl http://localhost:9200/maven-dev/_count
+
+# View sample documents
+curl -X POST http://localhost:9200/maven-dev/_search \
+  -H 'Content-Type: application/json' \
+  -d '{"size": 1}'
+----
+
+If count is 0, index some data:
+
+[source,bash]
+----
+poetry run index-mbox data/dev/2024-12.mbox
+----
+
+=== MCP Inspector Won't Start
+
+1. **Check Node.js version**:
++
+[source,bash]
+----
+node --version  # Should be v18+
+----
+
+2. **Try with explicit port**:
++
+[source,bash]
+----
+PORT=5173 npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
+----
+
+3. **Check server starts independently**:
++
+[source,bash]
+----
+poetry run maven-mail-mcp
+# Should wait for input (Ctrl+C to exit)
+----
+
+=== Python Testing Errors
+
+If you get connection errors:
+
+1. **Ensure Elasticsearch is running**:
++
+[source,bash]
+----
+docker compose ps
+curl http://localhost:9200/_cluster/health
+----
+
+2. **Check environment variables**:
++
+[source,bash]
+----
+poetry run python -c "from mail_mcp.config import settings; print(settings.elasticsearch_url)"
+----
+
+3. **Enable debug logging**:
++
+[source,bash]
+----
+MAIL_MCP_LOG_LEVEL=DEBUG poetry run python test_tools.py
+----
+
+=== Claude Desktop Integration Issues
+
+1. **Check configuration path** - Make sure `cwd` is correct:
++
+[source,bash]
+----
+# Should show mail-mcp directory
+ls /Users/ascheman/wrk/maven/maven-support-and-care/maven-mcps/mail-mcp
+----
+
+2. **Check logs**:
++
+[source,bash]
+----
+# On macOS
+tail -f ~/Library/Logs/Claude/mcp-server-maven-mail.log
+----
+
+3. **Test command manually**:
++
+[source,bash]
+----
+cd /Users/ascheman/wrk/maven/maven-support-and-care/maven-mcps/mail-mcp
+poetry run maven-mail-mcp
+# Should start and wait for input
+----
+
+== Sample Test Data
+
+If you want to test with minimal data, index just one recent month:
+
+[source,bash]
+----
+# Get December 2024 (usually has release discussions)
+poetry run retrieve-mbox --date 2024-12
+
+# Index it
+poetry run index-mbox data/dev/2024-12.mbox
+
+# Verify
+curl http://localhost:9200/maven-dev/_count
+----
+
+This should give you enough emails to test all features.
+
+== Quick Start Test Sequence
+
+Complete minimal test in 5 minutes:
+
+[source,bash]
+----
+# 1. Start Elasticsearch (if not running)
+docker compose up -d elasticsearch
+sleep 10  # Wait for startup
+
+# 2. Index one month of data
+poetry run retrieve-mbox --date 2024-12
+poetry run index-mbox data/dev/2024-12.mbox
+
+# 3. Launch MCP Inspector
+npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
+
+# 4. Open browser to http://localhost:5173
+# 5. Try search_emails with query="release" and size=5
+# 6. Explore the results!
+----
+
+== Related Documentation
+
+* link:mcp-server.adoc[MCP Server Setup and Usage]
+* link:development.adoc[Development Guide]
+* link:data-management.adoc[Data Management]

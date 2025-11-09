@@ -1,0 +1,298 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= MCP Server Setup and Usage
+:toc:
+:toclevels: 3
+
+== Overview
+
+The Maven Mail MCP Server provides AI assistants with access to Apache Maven mailing list archives through the Model Context Protocol (MCP). This enables natural language queries about Maven development discussions, decisions, and technical issues.
+
+== Prerequisites
+
+* Python 3.11+
+* Poetry (dependency management)
+* Elasticsearch 8.11+ (running and accessible)
+* Indexed mailing list data (see link:data-management.adoc[Data Management])
+* Claude Desktop or other MCP-compatible client
+
+== Installation
+
+=== 1. Install Dependencies
+
+[source,bash]
+----
+poetry install
+----
+
+=== 2. Start Elasticsearch
+
+[source,bash]
+----
+docker compose up -d elasticsearch
+----
+
+Wait for Elasticsearch to be healthy:
+
+[source,bash]
+----
+curl http://localhost:9200/_cluster/health
+----
+
+=== 3. Index Mailing List Data
+
+Before using the MCP server, you need to index email data:
+
+[source,bash]
+----
+# Download and index recent archives
+poetry run retrieve-mbox --date 2024-12
+poetry run index-mbox data/dev/2024-12.mbox
+
+# Or index entire directory
+poetry run index-mbox --directory data/dev/
+----
+
+See link:data-management.adoc[Data Management] for details.
+
+== Configuration
+
+=== Environment Variables
+
+Configure the server using environment variables or `.env` file:
+
+[source,bash]
+----
+# Elasticsearch connection
+MAIL_MCP_ELASTICSEARCH_URL=http://localhost:9200
+MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
+
+# Logging
+MAIL_MCP_LOG_LEVEL=INFO
+----
+
+=== Claude Desktop Configuration
+
+To use with Claude Desktop, add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+[source,json]
+----
+{
+  "mcpServers": {
+    "maven-mail": {
+      "command": "poetry",
+      "args": ["run", "maven-mail-mcp"],
+      "cwd": "/path/to/maven-support-and-care/maven-mcps/mail-mcp",
+      "env": {
+        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
+        "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
+        "MAIL_MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+----
+
+**Important**: Update the `cwd` path to match your local installation.
+
+After updating the configuration, restart Claude Desktop.
+
+== Available Tools
+
+The MCP server provides four tools for querying mailing list archives:
+
+=== search_emails
+
+Full-text search across email archives.
+
+**Parameters:**
+
+* `query` (required): Search query (searches subject and body)
+* `list_name` (optional): Mailing list to search (default: dev@maven.apache.org)
+* `from_date` (optional): Start date filter (ISO format: YYYY-MM-DD)
+* `to_date` (optional): End date filter (ISO format: YYYY-MM-DD)
+* `has_jira` (optional): Filter for emails with JIRA references
+* `has_vote` (optional): Filter for emails with votes
+* `size` (optional): Maximum results (default: 10, max: 100)
+
+**Example queries:**
+
+----
+"Search for emails about Maven 4.0 release"
+"Find discussions about dependency resolution from 2024"
+"Show votes about the build cache feature"
+----
+
+=== get_message
+
+Retrieve a specific email message by Message-ID.
+
+**Parameters:**
+
+* `message_id` (required): Message-ID to retrieve
+* `list_name` (optional): Mailing list name (default: dev@maven.apache.org)
+
+**Example:**
+
+----
+"Show me the email with ID <abc123@example.com>"
+----
+
+=== get_thread
+
+Retrieve an entire email thread containing a specific message.
+
+**Parameters:**
+
+* `message_id` (required): Message-ID of any message in the thread
+* `list_name` (optional): Mailing list name (default: dev@maven.apache.org)
+* `max_messages` (optional): Maximum messages to retrieve (default: 50)
+
+**Example:**
+
+----
+"Get the full thread for message <abc123@example.com>"
+"Show me the discussion thread about MNG-1234"
+----
+
+=== find_references
+
+Find emails referencing a specific JIRA issue or GitHub PR.
+
+**Parameters:**
+
+* `reference` (required): Reference to search for (e.g., "MNG-1234" or "567")
+* `reference_type` (optional): Type of reference ("jira" or "github_pr", default: "jira")
+* `list_name` (optional): Mailing list name (default: dev@maven.apache.org)
+* `size` (optional): Maximum results (default: 20, max: 100)
+
+**Example queries:**
+
+----
+"Find all discussions about MNG-1234"
+"Show emails mentioning GitHub PR #567"
+----
+
+== Usage Examples
+
+Once configured in Claude Desktop, you can use natural language to query the archives:
+
+=== Search Examples
+
+----
+"What were the main discussions about Maven 4.0 in 2024?"
+"Find recent decisions about the build cache"
+"Show me emails where people voted on the wrapper feature"
+"Search for discussions about dependency resolution performance"
+----
+
+=== Reference Examples
+
+----
+"What's the status of MNG-1234?"
+"Show all discussions about MRESOLVER-567"
+"Find emails related to GitHub PR #123"
+----
+
+=== Thread Examples
+
+----
+"Show me the full discussion thread about the Maven 4 release"
+"Get the conversation that led to the decision on feature X"
+----
+
+== Data and Metadata
+
+The MCP server provides rich metadata extraction:
+
+* **JIRA references**: Automatic extraction of Maven JIRA issues (MNG-1234, etc.)
+* **GitHub references**: PR numbers and commit SHAs
+* **Version numbers**: Mentioned versions (4.0.0, 3.9.0-alpha-1, etc.)
+* **Decision indicators**: Keywords like "decided", "consensus", "approved"
+* **Vote detection**: Identifies [VOTE] threads and +1/-1 votes
+* **Quote filtering**: Separates quoted content from original contributions
+
+== Troubleshooting
+
+=== Server Won't Start
+
+Check logs in Claude Desktop:
+
+* **macOS**: `~/Library/Logs/Claude/mcp*.log`
+* **Windows**: `%APPDATA%\Claude\logs\mcp*.log`
+
+Common issues:
+
+1. **Elasticsearch not running**: Start with `docker compose up -d elasticsearch`
+2. **Wrong path in config**: Verify `cwd` path in Claude Desktop config
+3. **Poetry not in PATH**: Use full path to poetry in `command` field
+
+=== No Results Found
+
+1. **Check if data is indexed**:
++
+[source,bash]
+----
+curl http://localhost:9200/maven-dev/_count
+----
+
+2. **Verify index name**: Default is `maven-dev` for dev@maven.apache.org
+
+3. **Index data if missing**:
++
+[source,bash]
+----
+poetry run index-mbox --directory data/dev/
+----
+
+=== Connection Errors
+
+1. **Verify Elasticsearch is accessible**:
++
+[source,bash]
+----
+curl http://localhost:9200/_cluster/health
+----
+
+2. **Check environment variables** in Claude Desktop config
+
+== Performance Considerations
+
+* **Batch size**: Default 100 documents per batch for indexing
+* **Search limits**: Default 10 results, max 100 per query
+* **Thread limits**: Default 50 messages, configurable
+* **Cache**: Elasticsearch handles caching automatically
+
+For large-scale deployments, see link:development.adoc#performance-optimization[Performance Optimization].
+
+== Security Notes
+
+* The MCP server runs locally and connects to local Elasticsearch
+* No external network access required (after initial data retrieval)
+* All communication stays on localhost
+* No authentication currently implemented (local-only access)
+
+== Related Documentation
+
+* link:development.adoc[Development Guide]
+* link:data-management.adoc[Data Management]
+* link:roadmap.adoc[Roadmap and Features]
+* https://modelcontextprotocol.io/[Model Context Protocol Specification]

@@ -1,0 +1,127 @@
+#
+# Copyright 2025 The Apache Software Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# Maven JIRA Project Configuration
+# Source: https://cwiki.apache.org/confluence/display/MAVEN/JIRA2GH+Phase+1%3A+Enable+GitHub+Issues+and+stop+new+issues+in+Jira
+
+# Core projects and build tools
+[projects.core]
+keys = [
+    "MNG",          # Maven Core
+    "MBUILDCACHE",  # Maven Build Cache Extension
+    "MRESOLVER",    # Maven Artifact Resolver
+    "MWRAPPER",     # Maven Wrapper
+]
+
+# Core plugins (part of standard build lifecycle)
+[projects.core_plugins]
+keys = [
+    "MCLEAN",       # Maven Clean Plugin
+    "MCOMPILER",    # Maven Compiler Plugin
+    "MDEPLOY",      # Maven Deploy Plugin
+    "MINSTALL",     # Maven Install Plugin
+    "MRESOURCES",   # Maven Resources Plugin
+    "MSITE",        # Maven Site Plugin
+    "SUREFIRE",     # Maven Surefire Plugin (test execution)
+    "MVERIFIER",    # Maven Verifier Plugin
+]
+
+# Packaging plugins (create artifacts of various types)
+[projects.packaging_plugins]
+keys = [
+    "MEAR",         # Maven EAR Plugin
+    "MEJB",         # Maven EJB Plugin
+    "MJAR",         # Maven JAR Plugin
+    "MRAR",         # Maven RAR Plugin
+    "MWAR",         # Maven WAR Plugin
+    "MACR",         # Maven ACR Plugin
+    "MSHADE",       # Maven Shade Plugin
+    "MSOURCES",     # Maven Source Plugin
+    "MJLINK",       # Maven JLink Plugin
+    "MJMOD",        # Maven JMod Plugin
+]
+
+# Reporting plugins (generate project reports)
+[projects.reporting_plugins]
+keys = [
+    "MCHANGELOG",   # Maven Changelog Plugin
+    "MCHANGES",     # Maven Changes Plugin
+    "MCHECKSTYLE",  # Maven Checkstyle Plugin
+    "MDOAP",        # Maven DOAP Plugin
+    "MJAVADOC",     # Maven Javadoc Plugin
+    "MJDEPS",       # Maven JDeps Plugin
+    "MJXR",         # Maven JXR Plugin
+    "MLINKCHECK",   # Maven Linkcheck Plugin
+    "MPMD",         # Maven PMD Plugin
+    "MPIR",         # Maven Project Info Reports Plugin
+]
+
+# Tools plugins (build and release automation)
+[projects.tools_plugins]
+keys = [
+    "MANTRUN",      # Maven AntRun Plugin
+    "ARCHETYPE",    # Maven Archetype Plugin
+    "MARTIFACT",    # Maven Artifact Plugin
+    "MASSEMBLY",    # Maven Assembly Plugin
+    "MDEP",         # Maven Dependency Plugin
+    "MENFORCER",    # Maven Enforcer Plugin
+    "MGPG",         # Maven GPG Plugin
+    "MPH",          # Maven Help Plugin
+    "MINVOKER",     # Maven Invoker Plugin
+    "MJARSIGNER",   # Maven Jarsigner Plugin
+    "MJDEPRSCAN",   # Maven JDK Deprecation Scanner
+    "MPLUGIN",      # Maven Plugin Plugin
+    "MRELEASE",     # Maven Release Plugin
+    "MRRESOURCES",  # Maven Remote Resources Plugin
+    "SCM",          # Maven SCM Plugin
+    "MSCMPUB",      # Maven SCM Publish Plugin
+    "MSCRIPTING",   # Maven Scripting Plugin
+    "MSTAGE",       # Maven Stage Plugin
+    "MTOOLCHAINS",  # Maven Toolchains Plugin
+]
+
+# Shared components (libraries used by multiple plugins)
+[projects.shared]
+keys = [
+    "MSHARED",      # Maven Shared Components
+]
+
+# Doxia (documentation framework)
+[projects.doxia]
+keys = [
+    "DOXIA",            # Doxia
+    "DOXIASTITETOOLS",  # Doxia Sitetools
+    "DOXIATOOLS",       # Doxia Tools
+]
+
+# Miscellaneous projects
+[projects.misc]
+keys = [
+    "MARCHETYPES",      # Maven Archetypes
+    "MPOM",             # Maven POMs
+    "MASFRES",          # Maven ASF Resources
+    "MSKINS",           # Maven Skins
+    "MINDEXER",         # Maven Indexer
+    "MPLUGINTESTING",   # Maven Plugin Testing
+    "WAGON",            # Maven Wagon
+    "MNGSITE",          # Maven Website
+]
+
+# Metadata
+[metadata]
+# Source of this configuration
+source = "https://cwiki.apache.org/confluence/display/MAVEN/JIRA2GH+Phase+1%3A+Enable+GitHub+Issues+and+stop+new+issues+in+Jira"
+last_updated = "2025-01-16"

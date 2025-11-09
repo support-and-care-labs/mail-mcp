@@ -1,0 +1,353 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Docker Setup
+:toc:
+:toclevels: 2
+
+== Overview
+
+The project includes Docker support for running Elasticsearch and the MCP server.
+This is the recommended way to run the infrastructure during development.
+
+== Prerequisites
+
+Docker Desktop:: Version with Docker Compose V2 integrated
+
+[NOTE]
+====
+This project uses `docker compose` (Compose V2, integrated into Docker Desktop), not the older standalone `docker-compose`.
+====
+
+== Services
+
+=== Elasticsearch
+
+Storage backend for indexed email data.
+
+Image:: `docker.elastic.co/elasticsearch/elasticsearch:8.11.0`
+Ports:: 9200 (HTTP API), 9300 (transport)
+Configuration:: Single-node cluster, security disabled for local development
+
+=== Kibana
+
+Web UI for exploring and visualizing Elasticsearch data.
+
+Image:: `docker.elastic.co/kibana/kibana:8.11.0`
+Ports:: 5601 (HTTP)
+Access:: http://localhost:5601
+Features::
+* Discover - Search and filter documents
+* Visualizations - Create charts and graphs
+* Dashboards - Combined visualizations
+* Dev Tools - Run Elasticsearch queries directly
+
+=== mail-mcp (future)
+
+MCP server application.
+
+Current status:: Container defined but server not yet implemented
+
+== Common Commands
+
+=== Start Services
+
+[source,bash]
+----
+# Start Elasticsearch only
+docker compose up elasticsearch
+
+# Start Elasticsearch and Kibana (recommended for development)
+docker compose up elasticsearch kibana
+
+# Start all services (when MCP server is implemented)
+docker compose up
+
+# Run in detached mode (background)
+docker compose up -d elasticsearch kibana
+
+# View logs
+docker compose logs -f elasticsearch
+docker compose logs -f kibana
+----
+
+=== Stop Services
+
+[source,bash]
+----
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (clears all Elasticsearch data)
+docker compose down -v
+----
+
+=== Check Status
+
+[source,bash]
+----
+# List running containers
+docker compose ps
+
+# Check Elasticsearch health
+curl http://localhost:9200/_cluster/health
+
+# View cluster info
+curl http://localhost:9200/
+
+# Check Kibana status
+curl http://localhost:5601/api/status
+
+# Open Kibana in browser
+open http://localhost:5601
+----
+
+== Configuration
+
+Configuration is handled via environment variables in `docker-compose.yml`.
+
+=== Elasticsearch Settings
+
+[source,yaml]
+----
+environment:
+  - discovery.type=single-node
+  - xpack.security.enabled=false
+  - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  - cluster.name=mail-mcp-cluster
+  - node.name=mail-mcp-node
+----
+
+=== mail-mcp Settings
+
+[source,yaml]
+----
+environment:
+  - MAIL_MCP_ELASTICSEARCH_URL=http://elasticsearch:9200
+  - MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
+  - MAIL_MCP_DATA_PATH=/app/data
+----
+
+== Data Persistence
+
+Elasticsearch data is stored in a named Docker volume.
+
+[source,bash]
+----
+# List volumes
+docker volume ls | grep mail-mcp
+
+# Inspect volume
+docker volume inspect mail-mcp_es-data
+
+# Remove volume (deletes all indexed data)
+docker volume rm mail-mcp_es-data
+----
+
+== Using Kibana
+
+Kibana provides a web-based interface for exploring your indexed email data.
+
+=== First Time Setup
+
+After starting Kibana and indexing some data:
+
+1. **Access Kibana**: Open http://localhost:5601 in your browser
+2. **Create Data View**:
+   * Navigate to Management → Stack Management → Data Views
+   * Click "Create data view"
+   * Pattern: `maven-*` (matches all Maven indices)
+   * Time field: `date`
+   * Click "Save data view to Kibana"
+
+=== Discover
+
+Use Discover to search and explore emails:
+
+1. Navigate to Analytics → Discover
+2. Select your `maven-*` data view
+3. Use the search bar for queries:
+   * `subject:"release"` - Find release discussions
+   * `from_name:"Tamás"` - Emails from Tamás
+   * `has_vote:true` - Emails with votes
+   * `jira_references:*` - Emails mentioning JIRA issues
+
+=== Dev Tools
+
+Use Dev Tools for direct Elasticsearch queries:
+
+1. Navigate to Management → Dev Tools
+2. Run queries in the Console:
+
+[source,json]
+----
+GET maven-dev/_search
+{
+  "query": {
+    "match": {
+      "subject": "maven 4"
+    }
+  }
+}
+----
+
+=== Common Kibana Queries
+
+**Find emails by contributor:**
+[source,json]
+----
+GET maven-dev/_search
+{
+  "query": {
+    "wildcard": {
+      "from_address": "*cstamas*"
+    }
+  }
+}
+----
+
+**Find voting threads:**
+[source,json]
+----
+GET maven-dev/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "term": { "has_vote": true } }
+      ]
+    }
+  }
+}
+----
+
+**Find emails with JIRA references:**
+[source,json]
+----
+GET maven-dev/_search
+{
+  "query": {
+    "exists": {
+      "field": "jira_references"
+    }
+  }
+}
+----
+
+== Development Workflow
+
+=== Typical Development Session
+
+[source,bash]
+----
+# Start Elasticsearch and Kibana
+docker compose up -d elasticsearch kibana
+
+# Wait for services to be ready
+curl --retry 10 --retry-delay 2 http://localhost:9200/_cluster/health
+curl --retry 10 --retry-delay 2 http://localhost:5601/api/status
+
+# Work with the application
+poetry shell
+python -m mail_mcp.storage.elasticsearch  # Example
+
+# Open Kibana for data exploration
+open http://localhost:5601
+
+# When done
+docker compose down
+----
+
+=== Hot Reload for Development
+
+The `mail-mcp` service mounts source code as a volume for live updates:
+
+[source,yaml]
+----
+volumes:
+  - ./src:/app/src:ro
+----
+
+Changes to Python files are reflected immediately (if using a hot-reload server).
+
+== Troubleshooting
+
+=== Elasticsearch won't start
+
+Check Docker Desktop resources::
+Elasticsearch needs at least 512MB RAM.
+
+View logs::
+[source,bash]
+----
+docker compose logs elasticsearch
+----
+
+=== Port already in use
+
+Check for existing Elasticsearch instances::
+[source,bash]
+----
+lsof -i :9200
+----
+
+Change ports in docker-compose.yml::
+[source,yaml]
+----
+ports:
+  - "9201:9200"  # Map to different host port
+----
+
+=== Container keeps restarting
+
+Check health status::
+[source,bash]
+----
+docker compose ps
+----
+
+View detailed logs::
+[source,bash]
+----
+docker compose logs --tail=100 elasticsearch
+----
+
+=== Clear all data and restart
+
+[source,bash]
+----
+docker compose down -v
+docker compose up -d
+----
+
+== Production Deployment
+
+The current Docker setup is optimized for local development.
+For production deployment:
+
+* Enable Elasticsearch security (xpack.security.enabled=true)
+* Use proper TLS certificates
+* Configure appropriate heap sizes
+* Set up proper networking
+* Use Docker secrets for sensitive configuration
+* Configure backup/restore procedures
+
+See Elasticsearch documentation for production best practices.
+
+== Related Documentation
+
+* link:development.adoc[Development Guide]
+* link:../README.adoc[Project README]

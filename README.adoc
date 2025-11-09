@@ -1,0 +1,110 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= mail-mcp: Maven Mailing List MCP Server
+:toc:
+:toclevels: 2
+
+== Overview
+
+*mail-mcp* is an MCP (Model Context Protocol) server for accessing and analyzing Apache Maven mailing list archives.
+It provides tools to retrieve and process historical email discussions from Maven mailing lists, primarily dev@maven.apache.org.
+
+== Status
+
+🚧 *Early Development* - Data retrieval and parsing infrastructure implemented.
+MCP server implementation in progress.
+
+== Quick Start
+
+=== Prerequisites
+
+Python 3.11+:: Must be installed
+Poetry:: Dependency manager (install via `pipx install poetry`)
+Docker Desktop:: For running Elasticsearch
+
+=== Setup
+
+[source,bash]
+----
+# Configure poetry to use in-project virtual environment
+poetry config virtualenvs.in-project true
+
+# Install dependencies (creates .venv/ automatically)
+poetry install
+----
+
+=== Retrieve Mailing List Data
+
+[source,bash]
+----
+# Download a specific month from dev@maven.apache.org
+poetry run retrieve-mbox --date 2024-10
+
+# Download from a different mailing list
+poetry run retrieve-mbox --date 2024-10 --list users@maven.apache.org
+
+# Show help
+poetry run retrieve-mbox --help
+----
+
+The script downloads mbox files from the Apache Lists API and saves them as `YYYY-MM.mbox` in the current directory.
+
+=== Start Infrastructure
+
+[source,bash]
+----
+# Start Elasticsearch and Kibana for development
+docker compose up -d elasticsearch kibana
+
+# Check health
+curl http://localhost:9200/_cluster/health
+
+# Access Kibana web UI for data exploration
+open http://localhost:5601
+----
+
+== Documentation
+
+Development guide:: link:docs/development.adoc[Development workflow, project structure, tools]
+MCP Server:: link:docs/mcp-server.adoc[Setting up and using the MCP server with Claude Desktop]
+Docker setup:: link:docs/docker.adoc[Running Elasticsearch and services with Docker]
+Data management:: link:docs/data-management.adoc[Working with mbox files and archives]
+Roadmap:: link:docs/roadmap.adoc[Implementation status and planned features]
+Architecture decisions:: link:docs/adr/[ADRs documenting key technical decisions]
+
+== Part of maven-mcps
+
+This project is one MCP server within the maven-mcps umbrella project, which contains multiple MCP servers for Apache Maven support.
+
+== License
+
+This project is licensed under the Apache License 2.0.
+See the link:LICENSE[LICENSE] file for details.
+
+Copyright 2025 The Apache Software Foundation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

@@ -1,0 +1,213 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Roadmap and Implementation Status
+:toc:
+:toclevels: 2
+
+== Overview
+
+This document tracks the current implementation status and planned features for mail-mcp.
+
+== Current Status
+
+🚧 *Early Development Phase*
+
+The project currently provides data retrieval infrastructure and is building toward a full MCP server implementation.
+
+== Completed Features
+
+=== Infrastructure
+
+✅ Python project structure with Poetry
+✅ Docker Compose configuration with Elasticsearch
+✅ Configuration management with environment variables
+✅ Structured logging with structlog
+
+=== Data Retrieval
+
+✅ CLI tool for downloading mbox files (`retrieve-mbox`)
+✅ Support for any Apache mailing list
+✅ Proper error handling and atomic file writes
+
+=== Storage Layer
+
+✅ Elasticsearch client wrapper (async)
+✅ Index schema definition for email messages
+✅ Connection management and health checks
+✅ Single and bulk document indexing
+✅ Search query execution
+
+=== Parsing
+
+✅ mbox file parser
+✅ Email message parser
+✅ Header extraction (From, To, Subject, Date, Message-ID, References)
+✅ Body extraction from multipart MIME
+✅ Encoding handling (UTF-8, ISO-8859-1, etc.)
+✅ List information extraction
+
+== Recently Completed
+
+=== Metadata Extraction ✅
+
+✅ JIRA references extraction (MNG-1234, MRESOLVER-567, etc.)
+✅ GitHub references (PR numbers, commit SHAs)
+✅ Version number detection
+✅ Decision indicators (votes, keywords like "decided", "consensus")
+✅ Quote detection and filtering
+✅ Effective body extraction (quotes removed)
+
+=== Indexing Pipeline ✅
+
+✅ Bulk indexing with progress tracking
+✅ CLI tool for indexing single files or directories
+✅ Configurable batch sizes
+✅ Error recovery and statistics
+
+=== MCP Server Implementation ✅
+
+✅ FastMCP-based server with stdio transport
+✅ Four MCP tools implemented:
+  * `search_emails` - Full-text search with filters
+  * `get_message` - Retrieve message by ID
+  * `get_thread` - Reconstruct email threads
+  * `find_references` - Find JIRA/GitHub references
+✅ Claude Desktop integration ready
+✅ Comprehensive documentation
+
+== Planned Features
+
+=== Phase 1: Enhanced Threading
+
+Improved thread reconstruction::
+* Build hierarchical thread trees from References/In-Reply-To headers
+* Handle missing messages gracefully
+* Fallback to subject-based threading
+* Thread visualization and navigation
+
+=== Phase 2: Additional MCP Tools
+
+Enhanced search capabilities::
+* `get_decisions` - Dedicated tool for finding decision-related discussions
+* `search_by_contributor` - Find emails by specific contributors
+* `get_statistics` - Get mailing list statistics and trends
+
+Resource definitions::
+* Message resources for direct access
+* Thread resources for conversation contexts
+* List resources for mailing list metadata
+
+=== Phase 3: Enhanced Search
+
+Advanced features::
+* Temporal queries (date ranges, trends over time)
+* Aggregations (top contributors, active periods)
+* Similarity search (find related discussions)
+* Cross-list search (search multiple mailing lists)
+
+Quote handling::
+* Separate storage of quoted vs. new content
+* Quote percentage calculation
+* Focus search on original content only
+
+=== Phase 4: Additional Features
+
+Performance optimization::
+* Caching layer for frequently accessed data
+* Pagination for large result sets
+* Query optimization
+
+Data enrichment::
+* Link emails to Jira issues (external API)
+* Link emails to GitHub PRs (external API)
+* Contributor identity resolution
+
+Monitoring::
+* Metrics export (Prometheus)
+* Health check endpoints
+* Performance dashboards
+
+== Implementation Phases (from ADR-0002)
+
+=== Phase 1: Core Infrastructure ✅
+
+* ✅ Set up Python project structure with poetry
+* ✅ Implement Elasticsearch client wrapper
+* ✅ Define index schema and mappings
+* ✅ Basic mbox/email parsing
+
+=== Phase 2: Data Ingestion ✅
+
+* ✅ Implement full mbox parser
+* ✅ Metadata extraction (decision indicators, references)
+* ✅ Quote detection and filtering
+* ⏳ Advanced thread reconstruction logic
+* ✅ Bulk indexing to Elasticsearch
+
+=== Phase 3: MCP Server ✅
+
+* ✅ Implement MCP server with official SDK (FastMCP)
+* ✅ Define and implement MCP tools
+* ✅ Tool parameter validation
+* ✅ Error handling and logging
+
+=== Phase 4: Testing & Quality (Planned)
+
+* ⏳ Unit tests for all parsers and extractors
+* ⏳ Integration tests with Elasticsearch
+* ✅ Docker Compose setup for local development
+* ⏳ CI/CD pipeline configuration
+
+=== Phase 5: Documentation & Polish (Ongoing)
+
+* ✅ API documentation (ongoing)
+* ✅ Developer guide
+* ⏳ Deployment guide
+* ⏳ Performance tuning
+
+== Open Questions
+
+From ADRs and development process:
+
+. **Vector search**: When to implement semantic search capabilities?
+. **Multi-list strategy**: How to handle cross-list queries efficiently?
+. **Thread fallback**: Subject-based threading when headers are missing?
+. **Update strategy**: Pull-based (periodic) vs. push-based (webhooks)?
+. **Citation handling**: How aggressive to filter quoted content?
+. **Cross-posting**: Deduplicate messages sent to multiple lists?
+
+See link:adr/[Architecture Decision Records] for detailed discussions.
+
+== Contributing
+
+Want to help implement features?
+See link:development.adoc[Development Guide] for setup and contribution guidelines.
+
+Priority areas for contribution:
+
+* Metadata extraction implementations
+* Test coverage
+* Documentation improvements
+* Performance optimization
+* Additional MCP tools
+
+== Related Documentation
+
+* link:development.adoc[Development Guide]
+* link:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
+* link:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
+* link:../README.adoc[Project README]

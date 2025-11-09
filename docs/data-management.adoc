@@ -1,0 +1,252 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Data Management
+:toc:
+:toclevels: 2
+
+== Overview
+
+The mail-mcp project works with mailing list archives stored in mbox format.
+Data files are not tracked in Git as they can be regenerated at any time.
+
+== Data Directory Structure
+
+[source]
+----
+data/
+└── dev/                        # Maven dev@ mailing list
+    ├── 2002-11.mbox
+    ├── 2002-12.mbox
+    ├── ...
+    └── 2024-12.mbox
+----
+
+== mbox Files
+
+Format:: Standard Unix mbox format
+Content:: ASCII/SGML text with email messages
+Size:: ~743MB total for dev@ list (276+ monthly archives)
+Naming:: `YYYY-MM.mbox` (e.g., `2024-10.mbox`)
+Period:: November 2002 to present
+
+[IMPORTANT]
+====
+Data files are excluded from Git (`.gitignore`).
+All mbox files can be regenerated using the `retrieve-mbox` command.
+This keeps the repository size manageable.
+====
+
+== Retrieving Data
+
+=== Single Month
+
+[source,bash]
+----
+poetry run retrieve-mbox --date 2024-10
+----
+
+This downloads the mbox file from Apache's mail archive API and saves it as `2024-10.mbox` in the current directory.
+
+=== Specific Mailing List
+
+[source,bash]
+----
+poetry run retrieve-mbox --date 2024-10 --list users@maven.apache.org
+----
+
+Default list is `dev@maven.apache.org`.
+
+=== Bulk Retrieval
+
+To download multiple months:
+
+[source,bash]
+----
+# Download all months for 2024
+for month in {01..12}; do
+  poetry run retrieve-mbox --date 2024-$month
+done
+
+# Download specific range
+for year in {2023..2024}; do
+  for month in {01..12}; do
+    poetry run retrieve-mbox --date $year-$month
+  done
+done
+----
+
+[TIP]
+====
+Move downloaded files to the appropriate `data/` subdirectory:
+
+[source,bash]
+----
+mkdir -p data/dev
+mv *.mbox data/dev/
+----
+====
+
+== Data Source
+
+API:: Apache Ponymail API
+Endpoint:: `https://lists.apache.org/api/mbox.lua`
+Parameters:: `list` (mailing list address), `date` (YYYY-MM)
+Format:: Returns mbox file content
+
+Example:
+
+[source,bash]
+----
+curl "https://lists.apache.org/api/mbox.lua?list=dev@maven.apache.org&date=2024-10" \
+  -o 2024-10.mbox
+----
+
+== Data Processing Pipeline
+
+. **Retrieve**: Download mbox files from Apache API
+. **Parse**: Extract individual email messages
+. **Extract**: Extract metadata (JIRA refs, decisions, etc.)
+. **Index**: Store in Elasticsearch for searching
+. **Query**: Search and retrieve via MCP tools
+
+== Storage in Elasticsearch
+
+Once indexed, email data is stored in Elasticsearch.
+
+Index naming:: `{prefix}-{list}` (e.g., `maven-dev`)
+Document ID:: Email Message-ID header
+Data model:: See `src/mail_mcp/storage/schema.py`
+
+=== Viewing Indexed Data
+
+[source,bash]
+----
+# List indices
+curl http://localhost:9200/_cat/indices?v
+
+# Count documents
+curl http://localhost:9200/maven-dev/_count
+
+# Get a specific message
+curl http://localhost:9200/maven-dev/_doc/<message-id>
+----
+
+== Data Lifecycle
+
+=== Initial Setup
+
+[source,bash]
+----
+# 1. Retrieve data
+poetry run retrieve-mbox --date 2024-10
+
+# 2. Start Elasticsearch
+docker compose up -d elasticsearch
+
+# 3. Index data (when implemented)
+poetry run index-mbox data/dev/2024-10.mbox
+----
+
+=== Updates
+
+New messages are published monthly to Apache's mail archives.
+Retrieve the latest month periodically:
+
+[source,bash]
+----
+# Get current month
+poetry run retrieve-mbox --date $(date +%Y-%m)
+----
+
+=== Cleanup
+
+Remove local mbox files::
+[source,bash]
+----
+rm -rf data/
+----
+
+Clear Elasticsearch data::
+[source,bash]
+----
+docker compose down -v
+----
+
+== Data Size Considerations
+
+Per-month size:: Typically 1-5 MB per mbox file
+Total archive:: ~743 MB for 22 years of dev@ list
+Elasticsearch index:: Approximately 2-3x the mbox size (depends on analysis settings)
+
+[NOTE]
+====
+The `data/` directory is gitignored to keep the repository size manageable.
+For continuous integration or new development environments, retrieve only the data needed for testing.
+====
+
+== Multiple Mailing Lists
+
+The system supports multiple Apache mailing lists:
+
+dev@maven.apache.org:: Main development discussions (default)
+users@maven.apache.org:: User questions and support
+issues@maven.apache.org:: Automated issue notifications
+
+Each list can be stored in its own subdirectory:
+
+[source]
+----
+data/
+├── dev/
+├── users/
+└── issues/
+----
+
+== Backup and Restore
+
+=== Backup mbox Files
+
+[source,bash]
+----
+# Create tar archive
+tar -czf maven-mbox-backup-$(date +%Y%m%d).tar.gz data/
+
+# Or sync to remote storage
+rsync -avz data/ backup-server:/backups/maven-mcp/
+----
+
+=== Restore from Backup
+
+[source,bash]
+----
+# Extract tar archive
+tar -xzf maven-mbox-backup-YYYYMMDD.tar.gz
+
+# Or sync from remote storage
+rsync -avz backup-server:/backups/maven-mcp/ data/
+----
+
+=== Elasticsearch Backup
+
+See Elasticsearch documentation for snapshot/restore procedures:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore.html
+
+== Related Documentation
+
+* link:development.adoc[Development Guide]
+* link:docker.adoc[Docker Setup]
+* link:../README.adoc[Project README]

@@ -1,0 +1,325 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Development Guide
+:toc:
+:toclevels: 3
+
+== Project Structure
+
+[source]
+----
+mail-mcp/
+├── README.adoc                 # Project overview and quick start
+├── pyproject.toml              # Python project configuration
+├── .venv/                      # Virtual environment (gitignored)
+├── src/
+│   └── mail_mcp/               # Python package (nested structure)
+│       ├── __init__.py
+│       ├── config.py           # Configuration management
+│       ├── cli/                # Command-line tools
+│       ├── storage/            # Elasticsearch client
+│       ├── parsers/            # mbox and email parsers
+│       └── extractors/         # Metadata extraction (future)
+├── tests/                      # Test files (future)
+├── docs/                       # Project documentation
+│   └── adr/                    # Architecture Decision Records
+├── data/
+│   └── dev/                    # Maven dev@ mailing list archives (gitignored)
+│       ├── 2002-11.mbox
+│       ├── 2002-12.mbox
+│       └── ...                 # 276+ monthly archives
+└── tmp/                        # Temporary files (gitignored)
+----
+
+[NOTE]
+====
+The source code uses a nested `src/mail_mcp/` structure rather than flat `src/` for the following reasons:
+
+* The package is installable as `mail-mcp` (PyPI name)
+* Import statements use `from mail_mcp.storage import ...` which clearly identifies the package origin
+* Entry points in `pyproject.toml` reference `mail_mcp.cli.retrieve_mbox:main`
+* Follows standard Python packaging conventions where the package name matches the import name
+
+Each sub-project in the maven-mcps umbrella is isolated in its own directory, so the nesting doesn't create cross-project confusion.
+====
+
+== Technology Stack
+
+Python 3.11+:: Implementation language
+Poetry:: Dependency management and virtual environments
+httpx:: Async HTTP client for Apache API requests
+mbox format:: Standard Unix mailbox format for email archives
+Apache Lists API:: REST API at `https://lists.apache.org/api/mbox.lua`
+Elasticsearch 8.11+:: Storage backend for indexed email data
+MCP SDK:: Model Context Protocol server framework
+structlog:: Structured logging
+
+== Development Environment
+
+=== Virtual Environment with Poetry
+
+Poetry automatically manages virtual environments.
+
+[source,bash]
+----
+# One-time setup
+poetry config virtualenvs.in-project true
+poetry install
+
+# Activate virtual environment
+poetry shell
+
+# Or run commands without activating
+poetry run pytest
+poetry run retrieve-mbox --date 2024-10
+----
+
+=== Optional: direnv
+
+For automatic virtual environment activation, create a `.envrc` file:
+
+[source,bash]
+----
+# Source parent .envrc if it exists
+source_up_if_exists
+
+# Activate Poetry virtual environment
+if [ -d .venv ]; then
+  source .venv/bin/activate
+else
+  echo "Warning: .venv not found. Run 'poetry install' to create it."
+fi
+----
+
+Then run:
+
+[source,bash]
+----
+direnv allow
+----
+
+The virtual environment will activate automatically when entering this directory.
+
+=== Code Quality Tools
+
+Linter and formatter::
+[source,bash]
+----
+poetry run ruff check .
+poetry run ruff format .
+----
+
+Type checking::
+[source,bash]
+----
+poetry run mypy src/
+----
+
+Tests::
+[source,bash]
+----
+poetry run pytest
+poetry run pytest --cov=mail_mcp
+----
+
+== Development Workflow
+
+=== Adding New Features
+
+. Create a feature branch
+. Implement the feature
+. Write tests
+. Run code quality checks
+. Update documentation
+. Submit for review
+
+=== Running Tests
+
+[source,bash]
+----
+# Run all tests
+poetry run pytest
+
+# Run with coverage
+poetry run pytest --cov=mail_mcp --cov-report=html
+
+# Run specific test file
+poetry run pytest tests/test_email_parser.py
+----
+
+=== Working with Elasticsearch
+
+See link:docker.adoc[Docker Setup] for running Elasticsearch locally.
+
+[source,bash]
+----
+# Start Elasticsearch
+docker compose up -d elasticsearch
+
+# Check health
+curl http://localhost:9200/_cluster/health
+
+# View indices
+curl http://localhost:9200/_cat/indices?v
+
+# Stop Elasticsearch
+docker compose down
+----
+
+== Module Organization
+
+=== cli/
+Command-line tools for end users.
+
+retrieve_mbox.py:: Download mbox files from Apache API
+
+=== storage/
+Elasticsearch integration layer.
+
+elasticsearch.py:: Async Elasticsearch client wrapper
+schema.py:: Index mappings and settings
+
+=== parsers/
+Email and mbox file parsing.
+
+mbox_parser.py:: Parse mbox files
+email_parser.py:: Parse individual email messages
+
+=== extractors/ (future)
+Metadata extraction from email content.
+
+metadata.py:: Extract JIRA refs, GitHub refs, versions
+quotes.py:: Detect and filter quoted content
+threads.py:: Reconstruct email threads
+
+== Configuration
+
+=== Environment Variables
+
+Configuration is managed via environment variables or `.env` file.
+
+[source,bash]
+----
+# Elasticsearch
+MAIL_MCP_ELASTICSEARCH_URL=http://localhost:9200
+MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
+
+# Data paths
+MAIL_MCP_DATA_PATH=./data
+
+# Maven JIRA projects configuration
+MAIL_MCP_MAVEN_JIRA_PROJECTS_CONFIG=maven-jira-projects.toml
+
+# Logging
+MAIL_MCP_LOG_LEVEL=INFO
+MAIL_MCP_LOG_FORMAT=json
+----
+
+See `src/mail_mcp/config.py` for all available settings.
+
+=== Maven JIRA Projects Configuration
+
+Maven JIRA project keys are configured in `maven-jira-projects.toml`.
+This file defines all recognized Maven projects for JIRA reference extraction.
+
+==== Configuration File Structure
+
+[source,toml]
+----
+# Projects are organized by category
+[projects.core]
+keys = ["MNG", "MBUILDCACHE", "MRESOLVER", "MWRAPPER"]
+
+[projects.core_plugins]
+keys = ["MCLEAN", "MCOMPILER", "MDEPLOY", ...]
+
+# Metadata
+[metadata]
+source = "https://cwiki.apache.org/confluence/..."
+last_updated = "2025-01-16"
+----
+
+Project keys are automatically flattened from all categories at runtime - no redundant lists needed.
+
+==== Updating Project List
+
+To add new Maven projects:
+
+. Edit `maven-jira-projects.toml`
+. Add the project key to the appropriate category
+. No code changes needed - keys are flattened dynamically
+
+==== Usage in Code
+
+[source,python]
+----
+from mail_mcp.config import maven_projects
+
+# Get all project keys
+all_keys = maven_projects.get_all_project_keys()
+
+# Get regex pattern for matching JIRA references
+pattern = maven_projects.get_jira_pattern()
+matches = pattern.findall(email_body)  # Finds ["MNG-1234", "MRESOLVER-567"]
+
+# Get projects by category
+core_projects = maven_projects.get_projects_by_category("core")
+----
+
+==== Source
+
+The initial project list was sourced from:
+https://cwiki.apache.org/confluence/display/MAVEN/JIRA2GH+Phase+1%3A+Enable+GitHub+Issues+and+stop+new+issues+in+Jira
+
+== Debugging
+
+=== Enable Debug Logging
+
+[source,bash]
+----
+MAIL_MCP_LOG_LEVEL=DEBUG poetry run retrieve-mbox --date 2024-10
+----
+
+=== Inspect Elasticsearch Data
+
+[source,bash]
+----
+# Get a specific document
+curl http://localhost:9200/maven-dev/_doc/<message-id>
+
+# Search
+curl -X POST http://localhost:9200/maven-dev/_search \
+  -H 'Content-Type: application/json' \
+  -d '{"query": {"match": {"subject": "release"}}}'
+----
+
+== Contributing
+
+When contributing to mail-mcp:
+
+. Follow existing code style (enforced by ruff)
+. Add tests for new functionality
+. Update documentation
+. Keep commits focused and atomic
+. Write clear commit messages
+
+== Related Documentation
+
+* link:docker.adoc[Docker Setup]
+* link:data-management.adoc[Data Management]
+* link:roadmap.adoc[Roadmap and Implementation Status]
+* link:adr/[Architecture Decision Records]

@@ -1,0 +1,759 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= ADR-0002: Technology Stack and Implementation
+:toc:
+:toclevels: 3
+
+== Status
+
+Accepted (2025-01-16)
+
+== Context
+
+Following link:0001-storage-and-access-strategy.adoc[ADR-0001], we have decided to implement mail-mcp using Elasticsearch as the primary storage backend.
+This ADR defines the specific technologies, libraries, and frameworks to be used for the implementation.
+
+=== Requirements from ADR-0001
+
+MCP Server:: Model Context Protocol server exposing tools for LLM interaction
+Data ingestion:: Parse mbox files, extract metadata, index into Elasticsearch
+Metadata extraction:: Decision indicators, external references (JIRA, GitHub), temporal markers
+Thread reconstruction:: Build relationships from email headers (In-Reply-To, References)
+Quote detection:: Filter quoted content from email bodies
+Containerization:: Docker/Kubernetes deployment support
+Development workflow:: Test framework, local development environment
+
+=== Existing Assets
+
+Groovy script:: `bin/retrieve-mbox.groovy` - will be rewritten in Python
+Data format:: Standard Unix mbox format
+API access:: Apache Ponymail API integration established (HTTP GET)
+
+=== Constraints
+
+Self-contained:: Minimal external dependencies
+Maintainable:: Clear code, good documentation, standard patterns
+Performance:: Handle 743MB+ data efficiently
+Future-proof:: Support for vector search, additional backends
+
+== Decision
+
+We will implement mail-mcp using **Python 3.11+** with the following technology stack.
+
+=== Programming Language: Python 3.11+
+
+**Rationale**:
+
+* **MCP SDK availability**: Official Python SDK from Anthropic
+* **Rich ecosystem**: Excellent libraries for email parsing, NLP, Elasticsearch
+* **Async support**: Native async/await for MCP server implementation
+* **Data processing**: Strong tools for text processing and metadata extraction
+* **Community**: Large community, extensive documentation
+* **Integration**: Easy integration with future ML/NER capabilities
+
+**Alternatives considered**:
+
+Groovy/Java::
+Pros: Existing script in Groovy, strong JVM ecosystem.
+Cons: Less mature MCP SDK, heavier runtime, requires JVM installation.
+Decision: Existing Groovy script will be rewritten in Python for consistency.
+
+TypeScript/Node.js::
+Pros: Good MCP support, fast async I/O.
+Cons: Weaker email/mbox parsing libraries, less suitable for data processing.
+
+=== Core Dependencies
+
+==== MCP Framework
+
+Library:: `mcp` (official Anthropic Python SDK)
+Version:: Latest stable (0.9.0+)
+Purpose:: MCP server implementation, tool/resource definitions
+Documentation:: https://modelcontextprotocol.io/
+
+**Usage**:
+
+[source,python]
+----
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+
+server = Server("mail-mcp")
+
+@server.list_tools()
+async def list_tools():
+    # Define MCP tools
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict):
+    # Implement tool calls
+----
+
+==== HTTP Client
+
+Library:: `httpx` (async HTTP client)
+Version:: Latest stable
+Purpose:: Download mbox files from Apache Ponymail API, Elasticsearch API calls
+Documentation:: https://www.python-httpx.org/
+
+**Usage**:
+
+[source,python]
+----
+import httpx
+
+async with httpx.AsyncClient() as client:
+    response = await client.get(
+        "https://lists.apache.org/api/mbox.lua",
+        params={"list": "dev@maven.apache.org", "date": "2024-10"}
+    )
+    mbox_content = response.content
+----
+
+==== Elasticsearch Client
+
+Library:: `elasticsearch` (official Python client)
+Version:: 8.x (compatible with Elasticsearch 8.11+)
+Purpose:: Index management, document CRUD, search queries
+Documentation:: https://elasticsearch-py.readthedocs.io/
+
+**Usage**:
+
+[source,python]
+----
+from elasticsearch import AsyncElasticsearch
+
+es = AsyncElasticsearch(
+    hosts=["http://elasticsearch:9200"],
+    request_timeout=30
+)
+
+# Index a message
+await es.index(
+    index="maven-dev",
+    id=message_id,
+    document=message_doc
+)
+
+# Search
+results = await es.search(
+    index="maven-dev",
+    query={"match": {"body_effective": search_term}}
+)
+----
+
+==== Email/mbox Parsing
+
+Library:: `mailbox` (Python standard library)
+Purpose:: Parse mbox files, iterate messages
+Documentation:: https://docs.python.org/3/library/mailbox.html
+
+Library:: `email` (Python standard library)
+Purpose:: Parse individual email messages, extract headers/body
+Documentation:: https://docs.python.org/3/library/email.html
+
+**Usage**:
+
+[source,python]
+----
+import mailbox
+import email
+
+mbox = mailbox.mbox("2024-10.mbox")
+for message in mbox:
+    msg = email.message_from_bytes(message.as_bytes())
+    subject = msg["Subject"]
+    from_addr = msg["From"]
+    body = msg.get_payload(decode=True)
+----
+
+==== Metadata Extraction
+
+Library:: Built-in `re` (regex) initially
+Purpose:: Extract decision indicators, external references, versions
+Future:: Consider `spaCy` for NER (Named Entity Recognition)
+
+**Patterns**:
+
+[source,python]
+----
+import re
+
+# JIRA references
+JIRA_PATTERN = re.compile(r'\b(MAVEN|MNG|MRESOLVER)-\d+\b')
+
+# GitHub PR references
+GITHUB_PR_PATTERN = re.compile(r'#(\d+)')
+
+# Version numbers
+VERSION_PATTERN = re.compile(r'\b\d+\.\d+\.\d+(-[A-Za-z0-9]+)?\b')
+
+# Decision keywords
+DECISION_KEYWORDS = ["decided", "consensus", "agreed", "RESOLVED",
+                     "WONTFIX", "[VOTE]", "[RESULT]"]
+----
+
+==== Quote Detection
+
+Library:: `quotequail` or custom regex-based implementation
+Purpose:: Detect and filter quoted content from email bodies
+Alternatives:: `talon` (more sophisticated, heavier), custom implementation
+
+**Approach**:
+
+[source,python]
+----
+import re
+
+def extract_effective_content(body: str) -> str:
+    """Remove quoted lines (starting with >, |, etc.)"""
+    lines = body.split('\n')
+    effective_lines = []
+
+    for line in lines:
+        # Skip quoted lines
+        if line.strip().startswith(('>',  '|')):
+            continue
+        # Skip attribution lines
+        if re.match(r'^On .* wrote:', line):
+            continue
+        effective_lines.append(line)
+
+    return '\n'.join(effective_lines)
+----
+
+==== Configuration Management
+
+Library:: `pydantic-settings`
+Purpose:: Type-safe configuration with validation
+Environment variables:: Support for Docker/K8s deployment
+
+**Configuration**:
+
+[source,python]
+----
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    elasticsearch_url: str = "http://localhost:9200"
+    elasticsearch_index_prefix: str = "maven"
+    data_path: str = "./data"
+    mbox_cache_enabled: bool = True
+
+    class Config:
+        env_prefix = "MAIL_MCP_"
+        env_file = ".env"
+----
+
+==== Testing Framework
+
+Library:: `pytest` with `pytest-asyncio`
+Purpose:: Unit and integration tests
+Coverage:: `pytest-cov`
+Mocking:: `pytest-mock`
+
+**Test structure**:
+
+[source]
+----
+tests/
+├── unit/
+│   ├── test_mbox_parser.py
+│   ├── test_metadata_extractor.py
+│   └── test_quote_detector.py
+├── integration/
+│   ├── test_elasticsearch_client.py
+│   └── test_mcp_tools.py
+└── fixtures/
+    └── sample.mbox
+----
+
+==== Logging
+
+Library:: `structlog`
+Purpose:: Structured logging for debugging and monitoring
+Output:: JSON format for container environments
+
+**Usage**:
+
+[source,python]
+----
+import structlog
+
+log = structlog.get_logger()
+
+log.info("indexing_message",
+         message_id=msg_id,
+         list="dev@maven.apache.org",
+         date=msg_date)
+----
+
+=== Project Structure
+
+[source]
+----
+mail-mcp/
+├── src/
+│   └── mail_mcp/
+│       ├── __init__.py
+│       ├── server.py              # MCP server entry point
+│       ├── config.py               # Configuration
+│       ├── storage/
+│       │   ├── __init__.py
+│       │   ├── elasticsearch.py    # ES client wrapper
+│       │   └── schema.py           # Index mapping definitions
+│       ├── parsers/
+│       │   ├── __init__.py
+│       │   ├── mbox_parser.py      # mbox file parsing
+│       │   └── email_parser.py     # Individual message parsing
+│       ├── extractors/
+│       │   ├── __init__.py
+│       │   ├── metadata.py         # Decision indicators, refs
+│       │   ├── quotes.py           # Quote detection/filtering
+│       │   └── threads.py          # Thread reconstruction
+│       ├── tools/
+│       │   ├── __init__.py
+│       │   ├── search.py           # search_emails tool
+│       │   ├── retrieve.py         # get_message, get_thread tools
+│       │   └── sync.py             # sync_list tool
+│       ├── cli/
+│       │   ├── __init__.py
+│       │   └── retrieve_mbox.py    # CLI tool for mbox retrieval
+│       └── utils/
+│           ├── __init__.py
+│           └── logging.py
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── bin/
+│   └── retrieve-mbox               # Python script (was .groovy)
+├── data/                           # mbox cache (gitignored)
+├── .venv/                          # Virtual environment (gitignored)
+├── pyproject.toml                  # Python project config
+├── poetry.lock                     # Dependency lock file
+├── .gitignore                      # Git ignore patterns
+├── Dockerfile
+├── docker-compose.yml
+├── README.adoc
+└── CLAUDE.md
+----
+
+**`.gitignore` additions**:
+
+[source]
+----
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Poetry
+poetry.lock  # Optional: some projects commit this
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data (already present)
+data/
+tmp/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+----
+
+=== Development Workflow
+
+==== Virtual Environment Management
+
+**Critical**: All Python dependencies must be isolated from the system Python installation to avoid conflicts and maintain reproducibility.
+
+**Recommended approaches** (in order of preference):
+
+===== Option 1: Poetry (Recommended)
+
+Poetry automatically creates and manages virtual environments.
+
+[source,bash]
+----
+# Install poetry (one-time, using pipx to isolate poetry itself)
+pipx install poetry
+
+# Create project and virtual environment
+cd mail-mcp
+poetry install  # Creates .venv/ automatically
+
+# Activate virtual environment
+poetry shell
+
+# Or run commands without activating
+poetry run pytest
+poetry run python -m mail_mcp.server
+----
+
+Poetry stores the virtual environment in:
+* `mail-mcp/.venv/` (if configured with `poetry config virtualenvs.in-project true`)
+* Or `~/Library/Caches/pypoetry/virtualenvs/` (macOS default)
+
+===== Option 2: uv (Fast alternative)
+
+uv also manages virtual environments automatically and is significantly faster than poetry.
+
+[source,bash]
+----
+# Install uv (one-time)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+cd mail-mcp
+uv sync  # Creates .venv/ and installs dependencies
+
+# Activate virtual environment
+source .venv/bin/activate  # Unix/macOS
+# .venv\Scripts\activate   # Windows
+
+# Or run without activating
+uv run pytest
+uv run python -m mail_mcp.server
+----
+
+===== Option 3: Standard venv + pip
+
+For users who prefer standard Python tools without additional tooling.
+
+[source,bash]
+----
+# Create virtual environment
+cd mail-mcp
+python3.11 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Unix/macOS
+# .venv\Scripts\activate   # Windows
+
+# Install dependencies
+pip install -e .           # Install project in development mode
+pip install -e ".[dev]"    # Include dev dependencies
+
+# Deactivate when done
+deactivate
+----
+
+===== Option 4: Conda/Miniconda
+
+For users already using Conda ecosystems.
+
+[source,bash]
+----
+# Create conda environment
+conda create -n mail-mcp python=3.11
+conda activate mail-mcp
+
+# Install dependencies
+pip install -e .           # Poetry/pip still used for dependencies
+# Or: conda install --file requirements.txt  # If conda packages preferred
+
+# Deactivate
+conda deactivate
+----
+
+**Project Decision**: Use **Poetry** as the primary tool (documented in README).
+
+Rationale::
+* Automatic virtual environment management
+* Dependency resolution and locking
+* Build system integration
+* Most Python developers familiar with it
+* Good IDE integration (PyCharm, VS Code)
+
+Alternative tools (uv, venv, conda) remain valid for developers with different preferences.
+
+==== Dependency Management
+
+Tool:: `poetry` (primary), `uv` (alternative)
+File:: `pyproject.toml` for dependencies
+Lock file:: `poetry.lock` or `uv.lock` for reproducible builds
+Virtual environment:: Automatically managed by poetry/uv, or manual with venv/conda
+
+**pyproject.toml**:
+
+[source,toml]
+----
+[project]
+name = "mail-mcp"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=0.9.0",
+    "elasticsearch>=8.11.0",
+    "pydantic-settings>=2.0.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+retrieve-mbox = "mail_mcp.cli.retrieve_mbox:main"
+----
+
+==== Code Quality
+
+Linter:: `ruff` (fast, comprehensive)
+Formatter:: `ruff format` (Black-compatible)
+Type checker:: `mypy` (optional, for gradual typing)
+
+**Configuration** (pyproject.toml):
+
+[source,toml]
+----
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "S", "B", "A"]
+----
+
+==== Local Development Setup
+
+**Initial setup** (one-time):
+
+[source,bash]
+----
+# Install poetry globally (isolated via pipx)
+pipx install poetry
+
+# Configure poetry to create .venv in project directory
+poetry config virtualenvs.in-project true
+
+# Clone/navigate to project
+cd mail-mcp
+
+# Create virtual environment and install dependencies
+poetry install
+
+# Verify virtual environment
+poetry env info
+----
+
+**Daily development workflow**:
+
+[source,bash]
+----
+# Option A: Enter virtual environment shell
+poetry shell
+pytest                              # Run tests
+python -m mail_mcp.server          # Start server
+
+# Option B: Run commands via poetry (no shell activation)
+poetry run pytest
+poetry run python -m mail_mcp.server
+
+# Start Elasticsearch (separate terminal)
+docker-compose up elasticsearch
+
+# Retrieve test data (Python script)
+retrieve-mbox --date 2024-10
+# Or: poetry run retrieve-mbox --date 2024-10
+----
+
+**IDE configuration**:
+
+PyCharm:: Automatically detects `.venv/` directory
+VS Code:: Configure Python interpreter to `.venv/bin/python`
+Vim/Neovim:: Set up Python LSP to use `.venv/bin/python`
+
+==== Docker Setup
+
+**Dockerfile**:
+
+[source,dockerfile]
+----
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY pyproject.toml poetry.lock ./
+RUN pip install poetry && poetry install --no-dev
+
+# Copy application
+COPY src/ ./src/
+
+CMD ["poetry", "run", "python", "-m", "mail_mcp.server"]
+----
+
+**docker-compose.yml**:
+
+[source,yaml]
+----
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  mail-mcp:
+    build: .
+    environment:
+      - MAIL_MCP_ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - elasticsearch
+
+volumes:
+  es-data:
+----
+
+=== Migration from Groovy
+
+The existing `bin/retrieve-mbox.groovy` script will be **completely replaced** with a Python implementation.
+
+**Rationale**:
+* Single-language codebase simplifies maintenance
+* No JVM/Groovy runtime dependency
+* Consistent tooling and testing approach
+* Easier for contributors (one language to learn)
+
+**Migration steps**:
+. Implement `src/mail_mcp/cli/retrieve_mbox.py` with equivalent functionality
+. Add script entry point in `pyproject.toml`
+. Test Python version against existing Groovy behavior
+. Delete `bin/retrieve-mbox.groovy` after verification
+. Update documentation to reference Python script only
+
+== Consequences
+
+=== Positive
+
+* **Modern stack**: Python 3.11+ with async support
+* **Official MCP SDK**: Well-supported, maintained by Anthropic
+* **Rich ecosystem**: Excellent libraries for all requirements
+* **Standard patterns**: Familiar to Python developers
+* **Isolated dependencies**: Virtual environments prevent system Python pollution
+* **Reproducible builds**: Lock files ensure consistent environments across machines
+* **Testing support**: Comprehensive testing frameworks
+* **Container-friendly**: Easy Docker/K8s deployment
+* **Future-proof**: ML/NER libraries available when needed
+
+=== Negative
+
+* **Learning curve**: Team needs Python knowledge (if not already present)
+* **Dependency management**: Poetry/uv adds tooling complexity
+* **Async complexity**: Async/await patterns require careful handling
+* **Type safety**: Python is dynamically typed (mitigated by mypy, pydantic)
+* **Migration effort**: Existing Groovy script must be rewritten
+
+=== Neutral
+
+* **Single language**: Python-only codebase (Groovy eliminated)
+* **Standard library usage**: Minimizes external dependencies where possible
+* **Incremental typing**: Can add type hints gradually with mypy
+* **Testing discipline**: Requires commitment to test coverage
+
+== Implementation Phases
+
+=== Phase 1: Core Infrastructure
+
+. Set up Python project structure with poetry/uv
+. Implement Elasticsearch client wrapper
+. Define index schema and mappings
+. Basic mbox/email parsing
+
+=== Phase 2: Data Ingestion
+
+. Implement full mbox parser
+. Metadata extraction (decision indicators, references)
+. Quote detection and filtering
+. Thread reconstruction logic
+. Bulk indexing to Elasticsearch
+
+=== Phase 3: MCP Server
+
+. Implement MCP server with official SDK
+. Define and implement MCP tools (search, retrieve, thread)
+. Tool parameter validation
+. Error handling and logging
+
+=== Phase 4: Testing & Quality
+
+. Unit tests for all parsers and extractors
+. Integration tests with Elasticsearch
+. Docker Compose setup for local development
+. CI/CD pipeline configuration
+
+=== Phase 5: Documentation & Polish
+
+. API documentation
+. Developer guide
+. Deployment guide
+. Performance tuning
+
+== Open Questions
+
+. **Type coverage**: Enforce strict typing from the start, or add gradually?
+** Recommendation: Use pydantic for data models, optional mypy for other code
+
+. **Quote detection sophistication**: Simple regex or use quotequail/talon library?
+** Recommendation: Start with regex, evaluate libraries if accuracy insufficient
+
+. **Vector embeddings**: Integrate from start or defer?
+** Recommendation: Defer (per ADR-0001), but design schema to accommodate
+
+. **Elasticsearch version**: Target ES 8.11 or stay compatible with 7.x?
+** Recommendation: Target ES 8.11+ (current stable, better vector support)
+
+== References
+
+* https://modelcontextprotocol.io/[Model Context Protocol]
+* https://www.python.org/downloads/[Python 3.11+]
+* https://elasticsearch-py.readthedocs.io/[Elasticsearch Python Client]
+* https://python-poetry.org/[Poetry Dependency Manager]
+* https://docs.astral.sh/uv/[uv Package Manager]
+* https://docs.pydantic.dev/[Pydantic Documentation]
+* https://docs.pytest.org/[Pytest Documentation]
+* https://www.structlog.org/[Structlog]
+* link:0001-storage-and-access-strategy.adoc[ADR-0001: Storage and Access Strategy]
