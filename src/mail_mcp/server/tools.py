@@ -136,12 +136,18 @@ async def search_emails(
     # Build Elasticsearch query (just the query part, not full request body)
     es_query = {"bool": {"must": must_conditions}}
 
-    # Execute search
+    # Execute search - sort by date descending for most recent first
     client = await get_es_client()
 
     try:
         # Note: client.search() will call get_index_name() internally
-        results = await client.search(list_name, es_query, size=size)
+        # Sort by date descending to get most recent emails first
+        results = await client.search(
+            list_name,
+            es_query,
+            size=size,
+            sort=[{"date": {"order": "desc"}}]
+        )
     except Exception as e:
         logger.error("search_failed", error=str(e), exc_info=True)
         return f"Error searching emails: {e}"
@@ -331,7 +337,13 @@ async def get_thread(
 
     try:
         # client.search() will call get_index_name() internally
-        results = await client.search(list_name, query, size=max_messages)
+        # Sort by date ascending for chronological thread order
+        results = await client.search(
+            list_name,
+            query,
+            size=max_messages,
+            sort=[{"date": {"order": "asc"}}]
+        )
     except Exception as e:
         return f"Error searching thread: {e}"
 
@@ -433,7 +445,13 @@ async def search_by_contributor(
 
     try:
         # client.search() will call get_index_name() internally
-        results = await client.search(list_name, query, size=min(size, 100))
+        # Sort by date descending to get most recent emails first
+        results = await client.search(
+            list_name,
+            query,
+            size=min(size, 100),
+            sort=[{"date": {"order": "desc"}}]
+        )
     except Exception as e:
         return f"Error searching for contributor: {e}"
 
@@ -512,7 +530,13 @@ async def find_references(
 
     try:
         # client.search() will call get_index_name() internally
-        results = await client.search(list_name, query, size=min(size, 100))
+        # Sort by date descending to get most recent emails first
+        results = await client.search(
+            list_name,
+            query,
+            size=min(size, 100),
+            sort=[{"date": {"order": "desc"}}]
+        )
     except Exception as e:
         return f"Error searching references: {e}"
 

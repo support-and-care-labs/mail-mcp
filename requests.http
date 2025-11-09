@@ -23,36 +23,20 @@
 @elasticsearchUrl = http://localhost:9200
 
 ##################################################
-### MCP Server HTTP/SSE Endpoints
+### MCP Server HTTP Endpoints
 ##################################################
+### NOTE: These are simple REST endpoints for basic server information.
+### For full MCP protocol functionality (tools/list, calling tools, etc.),
+### use stdio transport with an MCP client like Claude Code:
+###   claude mcp add --transport stdio maven-mail-mcp -- poetry run maven-mail-mcp
 
 ### Health check endpoint
 GET {{mcpServerUrl}}/health
 Accept: application/json
 
-### Connect to MCP server via SSE
-### This establishes a session and returns the messages endpoint
-GET {{mcpServerUrl}}/sse
-Accept: text/event-stream
-
-### Get MCP server capabilities (after connecting)
-### Note: Replace session_id with the one from SSE connection
-# POST {{mcpServerUrl}}/messages/?session_id=YOUR_SESSION_ID
-# Content-Type: application/json
-#
-# {
-#   "jsonrpc": "2.0",
-#   "id": 1,
-#   "method": "initialize",
-#   "params": {
-#     "protocolVersion": "2024-11-05",
-#     "capabilities": {},
-#     "clientInfo": {
-#       "name": "http-client",
-#       "version": "1.0.0"
-#     }
-#   }
-# }
+### Server info - List MCP server capabilities
+GET {{mcpServerUrl}}/info
+Accept: application/json
 
 ##################################################
 ### Elasticsearch API

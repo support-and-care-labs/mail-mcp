@@ -249,7 +249,8 @@ class ElasticsearchClient:
         list_name: str,
         query: dict,
         size: int = 10,
-        from_: int = 0
+        from_: int = 0,
+        sort: list | None = None
     ) -> dict:
         """
         Execute a search query.
@@ -259,6 +260,7 @@ class ElasticsearchClient:
             query: Elasticsearch query DSL
             size: Number of results to return
             from_: Offset for pagination
+            sort: Optional sort specification (e.g., [{"date": {"order": "desc"}}])
 
         Returns:
             Search results
@@ -271,12 +273,17 @@ class ElasticsearchClient:
 
         index_name = get_index_name(settings.elasticsearch_index_prefix, list_name)
 
-        result = await self._client.search(
-            index=index_name,
-            query=query,
-            size=size,
-            from_=from_
-        )
+        search_params = {
+            "index": index_name,
+            "query": query,
+            "size": size,
+            "from_": from_
+        }
+
+        if sort:
+            search_params["sort"] = sort
+
+        result = await self._client.search(**search_params)
 
         logger.debug(
             "search_executed",

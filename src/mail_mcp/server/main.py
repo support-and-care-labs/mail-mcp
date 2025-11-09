@@ -81,10 +81,28 @@ def run_server():
                 "elasticsearch_url": settings.elasticsearch_url
             })
 
-        # Mount FastMCP SSE app under root, add health endpoint
+        # Get MCP server info endpoint
+        async def server_info(request):
+            """Get MCP server information and capabilities."""
+            from mail_mcp.server.server import server as mcp_server
+            return JSONResponse({
+                "name": "maven-mail-mcp",
+                "version": "1.0.0",
+                "tools": [
+                    {"name": "search_emails", "description": "Search Maven mailing list archives"},
+                    {"name": "search_by_contributor", "description": "Find emails from a specific contributor"},
+                    {"name": "get_message", "description": "Retrieve a specific email message by Message-ID"},
+                    {"name": "get_thread", "description": "Retrieve an email thread"},
+                    {"name": "find_references", "description": "Find emails referencing JIRA issues or GitHub PRs"}
+                ],
+                "note": "For full MCP protocol support, use /sse endpoint with an MCP client"
+            })
+
+        # Mount FastMCP SSE app under root, add other endpoints
         app = Starlette(
             routes=[
                 Route("/health", health_check),
+                Route("/info", server_info),
                 Mount("/", app=server.sse_app()),
             ]
         )
