@@ -247,6 +247,6 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore
 
 == Related Documentation
 
-* link:development.adoc[Development Guide]
-* link:docker.adoc[Docker Setup]
-* link:../README.adoc[Project README]
+* xref:development.adoc[Development Guide]
+* xref:docker.adoc[Docker Setup]
+* xref:../README.adoc[Project README]

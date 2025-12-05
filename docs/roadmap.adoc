@@ -190,12 +190,12 @@ From ADRs and development process:
 . **Citation handling**: How aggressive to filter quoted content?
 . **Cross-posting**: Deduplicate messages sent to multiple lists?
 
-See link:adr/[Architecture Decision Records] for detailed discussions.
+See xref:adr/[Architecture Decision Records] for detailed discussions.
 
 == Contributing
 
 Want to help implement features?
-See link:development.adoc[Development Guide] for setup and contribution guidelines.
+See xref:development.adoc[Development Guide] for setup and contribution guidelines.
 
 Priority areas for contribution:
 
@@ -207,7 +207,7 @@ Priority areas for contribution:
 
 == Related Documentation
 
-* link:development.adoc[Development Guide]
-* link:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
-* link:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
-* link:../README.adoc[Project README]
+* xref:development.adoc[Development Guide]
+* xref:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
+* xref:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
+* xref:../README.adoc[Project README]

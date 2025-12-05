@@ -349,5 +349,5 @@ See Elasticsearch documentation for production best practices.
 
 == Related Documentation
 
-* link:development.adoc[Development Guide]
-* link:../README.adoc[Project README]
+* xref:development.adoc[Development Guide]
+* xref:../README.adoc[Project README]

@@ -79,12 +79,12 @@ open http://localhost:5601
 
 == Documentation
 
-Development guide:: link:docs/development.adoc[Development workflow, project structure, tools]
-MCP Server:: link:docs/mcp-server.adoc[Setting up and using the MCP server with Claude Desktop]
-Docker setup:: link:docs/docker.adoc[Running Elasticsearch and services with Docker]
-Data management:: link:docs/data-management.adoc[Working with mbox files and archives]
-Roadmap:: link:docs/roadmap.adoc[Implementation status and planned features]
-Architecture decisions:: link:docs/adr/[ADRs documenting key technical decisions]
+Development guide:: xref:docs/development.adoc[Development workflow, project structure, tools]
+MCP Server:: xref:docs/mcp-server.adoc[Setting up and using the MCP server with Claude Desktop]
+Docker setup:: xref:docs/docker.adoc[Running Elasticsearch and services with Docker]
+Data management:: xref:docs/data-management.adoc[Working with mbox files and archives]
+Roadmap:: xref:docs/roadmap.adoc[Implementation status and planned features]
+Architecture decisions:: xref:docs/adr/[ADRs documenting key technical decisions]
 
 == Part of maven-mcps
 
@@ -93,7 +93,7 @@ This project is one MCP server within the maven-mcps umbrella project, which con
 == License
 
 This project is licensed under the Apache License 2.0.
-See the link:LICENSE[LICENSE] file for details.
+See the xref:LICENSE[LICENSE] file for details.
 
 Copyright 2025 The Apache Software Foundation
 

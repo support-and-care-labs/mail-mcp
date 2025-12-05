@@ -163,7 +163,7 @@ poetry run pytest tests/test_email_parser.py
 
 === Working with Elasticsearch
 
-See link:docker.adoc[Docker Setup] for running Elasticsearch locally.
+See xref:docker.adoc[Docker Setup] for running Elasticsearch locally.
 
 [source,bash]
 ----
@@ -319,7 +319,7 @@ When contributing to mail-mcp:
 
 == Related Documentation
 
-* link:docker.adoc[Docker Setup]
-* link:data-management.adoc[Data Management]
-* link:roadmap.adoc[Roadmap and Implementation Status]
-* link:adr/[Architecture Decision Records]
+* xref:docker.adoc[Docker Setup]
+* xref:data-management.adoc[Data Management]
+* xref:roadmap.adoc[Roadmap and Implementation Status]
+* xref:adr/[Architecture Decision Records]

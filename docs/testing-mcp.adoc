@@ -429,6 +429,6 @@ npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
 
 == Related Documentation
 
-* link:mcp-server.adoc[MCP Server Setup and Usage]
-* link:development.adoc[Development Guide]
-* link:data-management.adoc[Data Management]
+* xref:mcp-server.adoc[MCP Server Setup and Usage]
+* xref:development.adoc[Development Guide]
+* xref:data-management.adoc[Data Management]

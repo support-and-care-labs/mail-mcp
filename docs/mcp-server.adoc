@@ -27,7 +27,7 @@ The Maven Mail MCP Server provides AI assistants with access to Apache Maven mai
 * Python 3.11+
 * Poetry (dependency management)
 * Elasticsearch 8.11+ (running and accessible)
-* Indexed mailing list data (see link:data-management.adoc[Data Management])
+* Indexed mailing list data (see xref:data-management.adoc[Data Management])
 * Claude Desktop or other MCP-compatible client
 
 == Installation
@@ -67,7 +67,7 @@ poetry run index-mbox data/dev/2024-12.mbox
 poetry run index-mbox --directory data/dev/
 ----
 
-See link:data-management.adoc[Data Management] for details.
+See xref:data-management.adoc[Data Management] for details.
 
 == Configuration
 
@@ -281,7 +281,7 @@ curl http://localhost:9200/_cluster/health
 * **Thread limits**: Default 50 messages, configurable
 * **Cache**: Elasticsearch handles caching automatically
 
-For large-scale deployments, see link:development.adoc#performance-optimization[Performance Optimization].
+For large-scale deployments, see xref:development.adoc#performance-optimization[Performance Optimization].
 
 == Security Notes
 
@@ -292,7 +292,7 @@ For large-scale deployments, see link:development.adoc#performance-optimization[
 
 == Related Documentation
 
-* link:development.adoc[Development Guide]
-* link:data-management.adoc[Data Management]
-* link:roadmap.adoc[Roadmap and Features]
+* xref:development.adoc[Development Guide]
+* xref:data-management.adoc[Data Management]
+* xref:roadmap.adoc[Roadmap and Features]
 * https://modelcontextprotocol.io/[Model Context Protocol Specification]
