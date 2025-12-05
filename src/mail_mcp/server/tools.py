@@ -215,15 +215,14 @@ async def get_message(
 
     try:
         # client.get_document() expects list_name and will call get_index_name() internally
-        result = await client.get_document(list_name, message_id)
+        # Returns the document source directly (not wrapped in _source)
+        source = await client.get_document(list_name, message_id)
     except Exception as e:
         logger.error("get_message_failed", error=str(e), exc_info=True)
         return f"Error retrieving message: {e}"
 
-    if not result or "_source" not in result:
+    if not source:
         return f"Message not found: {message_id}"
-
-    source = result["_source"]
 
     # Format message
     output = ["=== Email Message ===\n"]
@@ -303,13 +302,12 @@ async def get_thread(
     # First, get the original message to find thread root
     try:
         # client.get_document() expects list_name and will call get_index_name() internally
-        msg = await client.get_document(list_name, message_id)
-        if not msg or "_source" not in msg:
+        # Returns the document source directly (not wrapped in _source)
+        source = await client.get_document(list_name, message_id)
+        if not source:
             return f"Message not found: {message_id}"
     except Exception as e:
         return f"Error retrieving message: {e}"
-
-    source = msg["_source"]
 
     # Find thread root (either this message or walk up references)
     thread_root = message_id

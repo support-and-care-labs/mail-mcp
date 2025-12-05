@@ -21,6 +21,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from mail_mcp.config import settings
 from mail_mcp.server import tools
 from mail_mcp.storage.schema import get_index_name
 
@@ -131,10 +132,11 @@ async def indexed_test_data(es_client, test_settings, clean_elasticsearch):
 
     # Index all test emails
     for email in test_emails:
-        await es_client.index_document(list_name, email)
+        await es_client.index_document(list_name, email["message_id"], email)
 
     # Refresh index to make documents searchable
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # Use global settings prefix since ElasticsearchClient uses it internally
+    index_name = get_index_name(settings.elasticsearch_index_prefix, list_name)
     await es_client._client.indices.refresh(index=index_name)
 
     return {
