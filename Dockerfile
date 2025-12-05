@@ -38,12 +38,34 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install supercronic for scheduled tasks
+# Latest release from https://github.com/aptible/supercronic/releases
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=71b0d58cc53f6bd72cf2f293e09e294b79c666d8 \
+    SUPERCRONIC=/usr/local/bin/supercronic
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSLO "$SUPERCRONIC_URL" && \
+    echo "${SUPERCRONIC_SHA1SUM}  supercronic-linux-amd64" | sha1sum -c - && \
+    chmod +x supercronic-linux-amd64 && \
+    mv supercronic-linux-amd64 "$SUPERCRONIC" && \
+    apt-get purge -y curl && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local/lib/python3.11/site-packages
+
+# Copy CLI entry point scripts from builder
+COPY --from=builder /install/bin/* /usr/local/bin/
 
 # Copy application code
 COPY src/ ./src/
 COPY maven-jira-projects.toml ./
+
+# Copy crontab for scheduler mode
+COPY crontab /app/crontab
 
 # Create directory for data
 RUN mkdir -p /app/data

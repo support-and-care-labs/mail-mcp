@@ -1,0 +1,9 @@
+# Crontab for mail-mcp scheduler
+#
+# Copyright 2025 The Apache Software Foundation
+# Licensed under the Apache License, Version 2.0
+#
+# Update the current month's mbox file and re-index hourly
+# Runs at minute 0 of every hour
+# Uses MAIL_MCP_DATA_PATH from environment (set in docker-compose.yml)
+0 * * * * /usr/local/bin/update-current-month --list dev@maven.apache.org

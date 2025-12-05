@@ -42,6 +42,15 @@ poetry run retrieve-mbox --date 2024-09 --list users@maven.apache.org
 poetry run retrieve-mbox --help
 ```
 
+### Update Current Month (Scheduled Task)
+
+```bash
+# Manually update and re-index the current month's mbox
+poetry run update-current-month --list dev@maven.apache.org --data-dir ./data
+
+# This runs automatically every hour via the scheduler container
+```
+
 ### Script Details: retrieve-mbox (Python)
 
 - **Purpose**: Downloads mbox files from Apache's mail archive API
@@ -54,6 +63,36 @@ poetry run retrieve-mbox --help
 - **Output**: Creates `<yyyy-mm>.mbox` in current directory
 - **Error Handling**: Validates date format, checks HTTP status, uses atomic file moves
 - **Location**: `src/mail_mcp/cli/retrieve_mbox.py`
+
+### Script Details: update-current-month (Python)
+
+- **Purpose**: Downloads and re-indexes the current month's mbox file
+- **Use Case**: Keeps the Elasticsearch index up-to-date with latest emails
+- **Dependencies**: Python 3.11+, httpx, elasticsearch client
+- **Arguments**:
+  - `--list <list@domain>` (optional): Mail list address (default: dev@maven.apache.org)
+  - `--data-dir <path>` (optional): Data directory (default: /app/data)
+- **Location**: `src/mail_mcp/cli/update_current_month.py`
+
+### Docker Compose Services
+
+The `docker-compose.yml` defines the following services:
+
+- **elasticsearch**: Elasticsearch 8.11 for storing and searching email data
+- **kibana**: Kibana for data visualization
+- **mail-mcp**: The MCP server (HTTP transport on port 8080)
+- **scheduler**: Runs hourly to fetch and re-index the current month's mbox
+
+```bash
+# Start all services including scheduler
+docker compose up -d
+
+# View scheduler logs
+docker compose logs -f scheduler
+
+# Manually trigger an update (runs inside scheduler container)
+docker compose exec scheduler update-current-month
+```
 
 ## Architecture
 

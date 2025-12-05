@@ -97,6 +97,33 @@ services:
       retries: 3
       start_period: 10s
 
+  # Scheduler for periodic mbox updates
+  # Runs hourly to fetch the current month's mbox and re-index into Elasticsearch
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mail-mcp-scheduler
+    environment:
+      - MAIL_MCP_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
+      - MAIL_MCP_DATA_PATH=/app/data
+      - MAIL_MCP_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount data directory as writable for scheduler to update mbox files
+      - ./data:/app/data:rw
+      # Mount source code for development (optional)
+      - ./src:/app/src:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - mail-mcp-network
+    restart: unless-stopped
+    # Override default command to run supercronic scheduler
+    command: ["/usr/local/bin/supercronic", "-json", "/app/crontab"]
+
 volumes:
   es-data:
     driver: local

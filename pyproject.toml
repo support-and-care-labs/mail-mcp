@@ -61,6 +61,7 @@ dev = [
 [project.scripts]
 retrieve-mbox = "mail_mcp.cli.retrieve_mbox:main"
 index-mbox = "mail_mcp.cli.index_mbox:main"
+update-current-month = "mail_mcp.cli.update_current_month:main"
 maven-mail-mcp = "mail_mcp.server.main:run_server"
 
 [tool.hatch.build.targets.wheel]
