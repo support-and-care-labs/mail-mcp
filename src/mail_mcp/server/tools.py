@@ -214,8 +214,8 @@ async def get_message(
     client = await get_es_client()
 
     try:
-        # client.get() expects list_name and will call get_index_name() internally
-        result = await client.get(list_name, message_id)
+        # client.get_document() expects list_name and will call get_index_name() internally
+        result = await client.get_document(list_name, message_id)
     except Exception as e:
         logger.error("get_message_failed", error=str(e), exc_info=True)
         return f"Error retrieving message: {e}"
@@ -302,8 +302,8 @@ async def get_thread(
 
     # First, get the original message to find thread root
     try:
-        # client.get() expects list_name and will call get_index_name() internally
-        msg = await client.get(list_name, message_id)
+        # client.get_document() expects list_name and will call get_index_name() internally
+        msg = await client.get_document(list_name, message_id)
         if not msg or "_source" not in msg:
             return f"Message not found: {message_id}"
     except Exception as e:

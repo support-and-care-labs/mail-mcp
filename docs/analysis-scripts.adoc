@@ -1,0 +1,298 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= Analysis Scripts
+:toc:
+:icons: font
+
+This document describes the analysis scripts available in the `scripts/` directory.
+These scripts help analyze patterns, references, and behavior in Maven mailing list archives.
+
+== Overview
+
+The scripts directory contains tools for:
+
+* Analyzing GitHub repository and PR/issue references in emails
+* Querying the MCP server programmatically for testing and debugging
+* Extracting statistics about mailing list discussions
+
+== Prerequisites
+
+Before running any analysis scripts, ensure:
+
+. Elasticsearch is running:
++
+[source,bash]
+----
+docker compose up -d elasticsearch
+----
+
+. Email data is indexed:
++
+[source,bash]
+----
+# Index specific months
+poetry run index-mbox data/dev/2024-10.mbox
+
+# Or index multiple files
+poetry run index-mbox data/dev/*.mbox
+----
+
+. Poetry dependencies are installed:
++
+[source,bash]
+----
+poetry install
+----
+
+== Available Scripts
+
+=== analyze_github_refs.py
+
+Analyzes GitHub repository and PR/issue references in Maven mailing list emails.
+This script queries Elasticsearch directly to extract and categorize references.
+
+==== Purpose
+
+* Identify which Apache Maven GitHub repositories are most frequently discussed
+* Extract PR/issue numbers and correlate them with specific repositories
+* Find unmatched PR references that may need manual investigation
+
+==== Usage
+
+[source,bash]
+----
+# Analyze last 90 days (default)
+poetry run python scripts/analyze_github_refs.py
+
+# Analyze last 30 days
+poetry run python scripts/analyze_github_refs.py --days 30
+
+# Use custom Elasticsearch URL
+poetry run python scripts/analyze_github_refs.py --es-url http://elasticsearch:9200
+
+# Query a different index
+poetry run python scripts/analyze_github_refs.py --index maven-users
+----
+
+==== Output Example
+
+The script produces output like:
+
+[source,text]
+----
+GITHUB REPOSITORIES REFERENCED (Last 90 days)
+================================================================================
+
+apache/maven                                   45 issues/PRs
+  Examples: #1234, #1235, #1300, #1350, #1400
+  ... and 37 more
+
+apache/maven-compiler-plugin                   12 issues/PRs
+  Examples: #100, #105, #110
+  ... and 9 more
+
+apache/maven-resolver                           8 issues/PRs
+  Examples: #200, #205
+
+Total matched: 65 PR/issue references to specific repositories
+Total unmatched: 23 PR/issue numbers (no explicit repo in text)
+----
+
+==== How It Works
+
+The script uses two patterns to extract GitHub references:
+
+GitHub URL pattern::
+Matches URLs like `https://github.com/apache/maven/issues/1234` or `https://github.com/apache/maven-compiler-plugin/pull/567`.
+
+Bracket notation::
+Matches references like `[maven-compiler-plugin#42]` which is a common shorthand in Maven discussions.
+
+References that only contain a PR number (like `#123`) without repository context are counted as "unmatched" since they could refer to any Maven repository.
+
+=== query_via_mcp.py
+
+Query the Maven mailing list archives via the MCP server.
+This script demonstrates how to use the MCP client programmatically.
+
+==== Purpose
+
+* Test MCP server tools without a full LLM integration
+* Debug search results and verify tool behavior
+* Provide examples for MCP client usage
+
+==== Usage
+
+[source,bash]
+----
+# Search emails by keyword
+poetry run python scripts/query_via_mcp.py search "release 4.0"
+
+# Get a specific message
+poetry run python scripts/query_via_mcp.py message "<message-id@example.com>"
+
+# Get thread containing a message
+poetry run python scripts/query_via_mcp.py thread "<message-id@example.com>"
+
+# Find emails from a contributor
+poetry run python scripts/query_via_mcp.py contributor "john@example.com"
+
+# Find emails mentioning a JIRA issue
+poetry run python scripts/query_via_mcp.py jira "MNG-7891"
+
+# Find emails mentioning a GitHub PR
+poetry run python scripts/query_via_mcp.py github "1234"
+----
+
+==== Available Commands
+
+search <query>::
+Full-text search across email subjects and bodies.
+Supports the `--size` option to limit results (default: 5).
+
+message <id>::
+Retrieve a specific email message by its Message-ID.
+Angle brackets are optional.
+
+thread <id>::
+Retrieve the entire email thread containing the specified message.
+Supports `--max-messages` option (default: 20).
+
+contributor <name>::
+Find emails from a specific contributor.
+Supports partial matching of email addresses and names.
+
+jira <issue>::
+Find emails that reference a JIRA issue (e.g., `MNG-7891`).
+
+github <pr>::
+Find emails that reference a GitHub PR number.
+
+== Use Cases
+
+=== Investigating a JIRA Issue
+
+To understand the discussion history around a JIRA issue:
+
+[source,bash]
+----
+# Find all emails mentioning the issue
+poetry run python scripts/query_via_mcp.py jira "MNG-7891"
+
+# Get the full thread for a specific discussion
+poetry run python scripts/query_via_mcp.py thread "<message-id-from-results>"
+----
+
+=== Understanding Contributor Activity
+
+To see what a specific contributor has been discussing:
+
+[source,bash]
+----
+poetry run python scripts/query_via_mcp.py contributor "developer@apache.org" --size 20
+----
+
+=== Analyzing GitHub Activity
+
+To see which Maven repositories are being actively discussed:
+
+[source,bash]
+----
+# Get overview of repository discussions in last 30 days
+poetry run python scripts/analyze_github_refs.py --days 30
+
+# Then find specific discussions about a PR
+poetry run python scripts/query_via_mcp.py github "1234"
+----
+
+=== Debugging MCP Server Behavior
+
+When developing or debugging the MCP server, use the query script to verify tool responses:
+
+[source,bash]
+----
+# Test search functionality
+poetry run python scripts/query_via_mcp.py search "test query"
+
+# Test message retrieval
+poetry run python scripts/query_via_mcp.py message "<known-message-id>"
+----
+
+== Extending the Scripts
+
+=== Adding New Analysis
+
+To add new analysis capabilities:
+
+. Create a new script in `scripts/`
+. Add proper license header and documentation
+. Use existing patterns for Elasticsearch access or MCP client usage
+. Document the script in this file
+
+=== Pattern Matching
+
+The GitHub URL extraction patterns in `analyze_github_refs.py` can serve as templates for extracting other types of references.
+These patterns are also tested in `tests/unit/test_metadata_extractor.py`.
+
+== Troubleshooting
+
+=== Elasticsearch Connection Errors
+
+If scripts fail to connect to Elasticsearch:
+
+[source,bash]
+----
+# Check if Elasticsearch is running
+docker compose ps
+
+# Start Elasticsearch if needed
+docker compose up -d elasticsearch
+
+# Verify it's accessible
+curl http://localhost:9200
+----
+
+=== Empty Results
+
+If searches return no results:
+
+. Verify data is indexed:
++
+[source,bash]
+----
+curl 'http://localhost:9200/maven-dev/_count'
+----
+
+. Re-index if needed:
++
+[source,bash]
+----
+poetry run index-mbox data/dev/2024-10.mbox
+----
+
+=== MCP Server Errors
+
+If the MCP client scripts fail:
+
+. Ensure the MCP server entry point is configured in `pyproject.toml`
+. Check that all dependencies are installed: `poetry install`
+. Run the server directly to see any startup errors:
++
+[source,bash]
+----
+poetry run maven-mail-mcp --transport stdio
+----
