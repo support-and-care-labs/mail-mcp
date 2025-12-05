@@ -51,3 +51,6 @@ dmypy.json
 # Docker
 .dockerignore
 docker-compose.override.yml
+
+# Docs
+*.html
