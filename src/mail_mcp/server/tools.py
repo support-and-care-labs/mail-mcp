@@ -23,7 +23,7 @@ import structlog
 from mcp.server.fastmcp import Context
 
 from mail_mcp.config import settings
-from mail_mcp.ponymail import get_archive_url
+from mail_mcp.ponymail import get_archive_url, PonymailResolver
 from mail_mcp.storage.elasticsearch import ElasticsearchClient
 
 logger = structlog.get_logger(__name__)
@@ -43,6 +43,77 @@ def format_archive_url(source: dict) -> str | None:
     if archive_mid:
         return get_archive_url(archive_mid)
     return None
+
+
+async def resolve_archive_url(
+    source: dict,
+    list_name: str,
+    es_client: ElasticsearchClient
+) -> str | None:
+    """
+    Resolve and cache archive URL for a message if not already cached.
+
+    When settings.resolve_archive_urls is enabled, this function will:
+    1. Check if archive_mid is already cached
+    2. If not, query Pony Mail API to look up the mid
+    3. Cache the result in Elasticsearch
+    4. Return the archive URL
+
+    Args:
+        source: Document source from Elasticsearch
+        list_name: Mailing list address
+        es_client: Elasticsearch client for caching
+
+    Returns:
+        Archive URL string if resolved/cached, None otherwise
+    """
+    # First check if already cached
+    archive_mid = source.get("archive_mid")
+    if archive_mid:
+        return get_archive_url(archive_mid)
+
+    # Check if resolution is enabled
+    if not settings.resolve_archive_urls:
+        return None
+
+    # Try to resolve via Pony Mail API
+    resolver = PonymailResolver(es_client)
+
+    # Parse date from source for search optimization
+    date = None
+    date_str = source.get("date")
+    if date_str:
+        try:
+            # Handle ISO format date string
+            if isinstance(date_str, str):
+                date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
+
+    message_id = source.get("message_id")
+    subject = source.get("subject")
+
+    if not message_id:
+        return None
+
+    try:
+        url = await resolver.resolve_url(
+            message_id=message_id,
+            list_name=list_name,
+            date=date,
+            subject=subject
+        )
+        if url:
+            # Update the source dict so caller sees it
+            source["archive_mid"] = url.split("/")[-1]  # Extract mid from URL
+        return url
+    except Exception as e:
+        logger.warning(
+            "archive_url_resolution_failed",
+            message_id=message_id,
+            error=str(e)
+        )
+        return None
 
 
 # Global Elasticsearch client (will be initialized on first use)
@@ -250,8 +321,8 @@ async def get_message(
     output = ["=== Email Message ===\n"]
     output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
-    # Archive URL (if cached)
-    archive_url = format_archive_url(source)
+    # Archive URL (resolve on-demand if enabled, otherwise use cached)
+    archive_url = await resolve_archive_url(source, list_name, client)
     if archive_url:
         output.append(f"Archive: {archive_url}")
 
@@ -387,8 +458,8 @@ async def get_thread(
         output.append(f"\n--- Message {i} ---")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
-        # Archive URL (if cached)
-        archive_url = format_archive_url(source)
+        # Archive URL (resolve on-demand if enabled, otherwise use cached)
+        archive_url = await resolve_archive_url(source, list_name, client)
         if archive_url:
             output.append(f"Archive: {archive_url}")
 

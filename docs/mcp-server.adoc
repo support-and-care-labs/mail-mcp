@@ -81,6 +81,11 @@ Configure the server using environment variables or `.env` file:
 MAIL_MCP_ELASTICSEARCH_URL=http://localhost:9200
 MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
 
+# Archive URL resolution (default: true)
+# When enabled, automatically looks up Pony Mail permalink IDs
+# for messages and caches them in Elasticsearch
+MAIL_MCP_RESOLVE_ARCHIVE_URLS=true
+
 # Logging
 MAIL_MCP_LOG_LEVEL=INFO
 ----
@@ -104,6 +109,7 @@ To use with Claude Desktop, add to your Claude Desktop configuration file:
       "env": {
         "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
         "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
+        "MAIL_MCP_RESOLVE_ARCHIVE_URLS": "true",
         "MAIL_MCP_LOG_LEVEL": "INFO"
       }
     }
@@ -236,8 +242,25 @@ The MCP server provides rich metadata extraction:
 When available, search results include an `Archive:` field with a direct link to the email at https://lists.apache.org.
 This allows viewing the original email in the Apache Pony Mail web interface.
 
-Archive URLs are resolved on-demand and cached in Elasticsearch.
-To populate the cache for a specific message:
+==== Automatic Resolution (Default)
+
+By default, archive URLs are resolved automatically when using the `get_message` tool.
+When you retrieve a specific message:
+
+1. The system checks if an archive URL is already cached
+2. If not cached, it queries the Pony Mail API to look up the permalink ID
+3. The result is cached in Elasticsearch for future use
+4. The archive URL is displayed in the response
+
+This behavior is controlled by the `MAIL_MCP_RESOLVE_ARCHIVE_URLS` environment variable (default: `true`).
+Set to `false` to disable automatic resolution.
+
+NOTE: Search results (`search_emails`, `find_references`, etc.) only display cached archive URLs.
+Use `get_message` on a specific email to trigger automatic resolution.
+
+==== Manual Resolution
+
+If automatic resolution is disabled, you can still populate the cache programmatically:
 
 [source,python]
 ----

@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     data_path: Path = Path("./data")
     mbox_cache_enabled: bool = True
 
+    # Archive URL resolution
+    # When enabled, automatically looks up Pony Mail permalink IDs (mid)
+    # for messages and caches them in Elasticsearch
+    resolve_archive_urls: bool = True
+
     # Maven JIRA projects configuration
     maven_jira_projects_config: Path = Path("maven-jira-projects.toml")
 
