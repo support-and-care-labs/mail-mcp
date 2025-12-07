@@ -16,8 +16,7 @@
 
 """Unit tests for archive URL resolution in MCP tools."""
 
-from datetime import datetime
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -184,6 +183,7 @@ class TestSettingsToggle:
     def test_can_be_disabled_via_env(self):
         """Test that setting can be disabled via environment variable."""
         import os
+
         from mail_mcp.config import Settings
 
         with patch.dict(os.environ, {"MAIL_MCP_RESOLVE_ARCHIVE_URLS": "false"}):
@@ -193,6 +193,7 @@ class TestSettingsToggle:
     def test_can_be_enabled_via_env(self):
         """Test that setting can be explicitly enabled via environment variable."""
         import os
+
         from mail_mcp.config import Settings
 
         with patch.dict(os.environ, {"MAIL_MCP_RESOLVE_ARCHIVE_URLS": "true"}):

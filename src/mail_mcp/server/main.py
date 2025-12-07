@@ -17,13 +17,11 @@
 """Main entry point for Maven MCP server."""
 
 # MUST import logging_config FIRST to configure stderr output
-import mail_mcp.logging_config  # noqa: F401
-
 import argparse
-import sys
 
 import structlog
 
+import mail_mcp.logging_config  # noqa: F401
 from mail_mcp.config import settings
 from mail_mcp.server.server import server
 
@@ -84,16 +82,15 @@ def run_server():
         # Get MCP server info endpoint
         async def server_info(request):
             """Get MCP server information and capabilities."""
-            from mail_mcp.server.server import server as mcp_server
             return JSONResponse({
                 "name": "maven-mail-mcp",
                 "version": "1.0.0",
                 "tools": [
-                    {"name": "search_emails", "description": "Search Maven mailing list archives"},
-                    {"name": "search_by_contributor", "description": "Find emails from a specific contributor"},
-                    {"name": "get_message", "description": "Retrieve a specific email message by Message-ID"},
-                    {"name": "get_thread", "description": "Retrieve an email thread"},
-                    {"name": "find_references", "description": "Find emails referencing JIRA issues or GitHub PRs"}
+                    {"name": "search_emails", "description": "Search archives"},
+                    {"name": "search_by_contributor", "description": "Find by contributor"},
+                    {"name": "get_message", "description": "Get message by ID"},
+                    {"name": "get_thread", "description": "Get email thread"},
+                    {"name": "find_references", "description": "Find JIRA/GitHub refs"}
                 ],
                 "note": "For full MCP protocol support, use /sse endpoint with an MCP client"
             })

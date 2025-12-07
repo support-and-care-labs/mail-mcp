@@ -134,7 +134,7 @@ class MetadataExtractor:
             # Only include if 7-40 characters and looks like a commit
             if 7 <= len(match) <= 40:
                 # Exclude common non-commit hex patterns
-                if not match.lower() in ('ffffff', 'deadbeef', '0000000'):
+                if match.lower() not in ('ffffff', 'deadbeef', '0000000'):
                     filtered.append(match)
 
         # Remove duplicates

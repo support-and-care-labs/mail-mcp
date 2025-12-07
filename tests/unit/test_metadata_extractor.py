@@ -22,7 +22,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mail_mcp.extractors.metadata import (
-    DECISION_KEYWORDS,
     GITHUB_COMMIT_PATTERN,
     GITHUB_PR_PATTERN,
     VERSION_PATTERN,

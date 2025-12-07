@@ -98,7 +98,7 @@ async def index_mbox_async(args: argparse.Namespace) -> int:
                 create_index=not args.no_create_index
             )
 
-            print(f"Directory indexing complete:")
+            print("Directory indexing complete:")
             print(f"  Files processed: {stats['files']}")
             print(f"  Documents indexed: {stats['indexed']}")
             print(f"  Errors: {stats['errors']}")
@@ -115,7 +115,7 @@ async def index_mbox_async(args: argparse.Namespace) -> int:
                 create_index=not args.no_create_index
             )
 
-            print(f"File indexing complete:")
+            print("File indexing complete:")
             print(f"  Documents indexed: {stats['indexed']}")
             print(f"  Errors: {stats['errors']}")
 

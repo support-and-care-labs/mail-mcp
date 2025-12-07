@@ -100,7 +100,7 @@ def download_mbox(list_addr: str, date_str: str, output_path: Path) -> bool:
         tmp_path.unlink(missing_ok=True)
         logger.error("download_http_error", url=url, error=str(e))
         return False
-    except IOError as e:
+    except OSError as e:
         tmp_path.unlink(missing_ok=True)
         logger.error("download_io_error", error=str(e))
         return False

@@ -17,8 +17,8 @@
 """Parser for mbox files containing email messages."""
 
 import mailbox
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import structlog
 

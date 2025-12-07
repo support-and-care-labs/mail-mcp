@@ -17,13 +17,11 @@
 """MCP server implementation for Maven mailing list archives."""
 
 # MUST import logging_config FIRST to configure stderr output
-import mail_mcp.logging_config  # noqa: F401
-
-from typing import Any
 
 import structlog
 from mcp.server.fastmcp import FastMCP
 
+import mail_mcp.logging_config  # noqa: F401
 from mail_mcp.config import settings
 from mail_mcp.server.tools import (
     find_references,
@@ -77,7 +75,10 @@ def create_server() -> FastMCP:
     logger.info(
         "mcp_server_created",
         name="maven-mail-mcp",
-        tools=["search_emails", "search_by_contributor", "get_message", "get_thread", "find_references"],
+        tools=[
+            "search_emails", "search_by_contributor",
+            "get_message", "get_thread", "find_references"
+        ],
     )
 
     return mcp

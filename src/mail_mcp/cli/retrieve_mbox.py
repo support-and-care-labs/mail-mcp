@@ -31,7 +31,6 @@ from urllib.parse import urlencode
 
 import httpx
 
-
 # ---- Constants ----
 DEFAULT_MAILING_LIST = "dev@maven.apache.org"
 BASE_URL = "https://lists.apache.org/api/mbox.lua"
@@ -138,7 +137,7 @@ def download_mbox(list_addr: str, date_str: str, output_path: Path) -> None:
         tmp_path.unlink(missing_ok=True)
         print(f"Download failed from {url}: {e}", file=sys.stderr)
         sys.exit(4)
-    except IOError as e:
+    except OSError as e:
         # Clean up temporary file on error
         tmp_path.unlink(missing_ok=True)
         print(f"File operation failed: {e}", file=sys.stderr)

@@ -28,9 +28,7 @@ for large archive imports.
 See: docs/adr/ for architecture decision on URL resolution strategy.
 """
 
-import urllib.parse
 from datetime import datetime
-from typing import Optional
 
 import httpx
 import structlog
@@ -60,9 +58,9 @@ def get_archive_url(mid: str) -> str:
 async def lookup_mid_by_search(
     message_id: str,
     list_name: str = "dev@maven.apache.org",
-    date: Optional[datetime] = None,
-    subject: Optional[str] = None,
-) -> Optional[str]:
+    date: datetime | None = None,
+    subject: str | None = None,
+) -> str | None:
     """
     Look up the Pony Mail mid for a message by searching the archive.
 
@@ -165,7 +163,7 @@ async def lookup_mid_by_search(
         return None
 
 
-async def get_mid_by_api(mid: str) -> Optional[dict]:
+async def get_mid_by_api(mid: str) -> dict | None:
     """
     Fetch email details from Pony Mail API by mid.
 
@@ -214,9 +212,9 @@ class PonymailResolver:
         self,
         message_id: str,
         list_name: str = "dev@maven.apache.org",
-        date: Optional[datetime] = None,
-        subject: Optional[str] = None,
-    ) -> Optional[str]:
+        date: datetime | None = None,
+        subject: str | None = None,
+    ) -> str | None:
         """
         Resolve the archive URL for a message, using cache if available.
 
@@ -262,7 +260,7 @@ class PonymailResolver:
         self,
         message_id: str,
         list_name: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get cached mid from Elasticsearch."""
         try:
             # The message_id is used as document ID in our index
@@ -270,8 +268,8 @@ class PonymailResolver:
             doc = await self.es_client.get_document(list_name, doc_id)
             if doc:
                 return doc.get("archive_mid")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("cached_mid_lookup_failed", message_id=message_id, error=str(e))
         return None
 
     async def _cache_mid(

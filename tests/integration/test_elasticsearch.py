@@ -274,11 +274,15 @@ async def test_index_naming_no_double_prefix(es_client, test_settings, clean_ela
     expected_index = "maven-dev"
 
     # Check that correct index exists
-    assert expected_index in index_names, f"Expected index '{expected_index}' not found. Found: {index_names}"
+    assert expected_index in index_names, (
+        f"Expected index '{expected_index}' not found. Found: {index_names}"
+    )
 
     # Check that NO double-prefixed index exists (maven-maven-dev)
     double_prefix = "maven-maven-dev"
-    assert double_prefix not in index_names, f"Found incorrect double-prefixed index: {double_prefix}"
+    assert double_prefix not in index_names, (
+        f"Found incorrect double-prefixed index: {double_prefix}"
+    )
 
     # Verify document is in correct index
     await es_client._client.indices.refresh(index=expected_index)

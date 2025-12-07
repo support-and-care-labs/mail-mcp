@@ -11,6 +11,9 @@ env/
 # direnv
 .envrc
 
+# act (local GitHub Actions runner)
+.actrc
+
 # Poetry
 poetry.lock
 

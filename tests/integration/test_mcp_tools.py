@@ -51,8 +51,14 @@ async def indexed_test_data(es_client, test_settings, clean_elasticsearch):
             "list_address": "dev@maven.apache.org",
             "in_reply_to": None,
             "references": [],
-            "body_full": "I would like to call a vote on releasing Maven 4.0.0.\n\nPlease vote +1, 0, or -1.",
-            "body_effective": "I would like to call a vote on releasing Maven 4.0.0. Please vote +1, 0, or -1.",
+            "body_full": (
+                "I would like to call a vote on releasing Maven 4.0.0.\n\n"
+                "Please vote +1, 0, or -1."
+            ),
+            "body_effective": (
+                "I would like to call a vote on releasing Maven 4.0.0. "
+                "Please vote +1, 0, or -1."
+            ),
             "quote_percentage": 0.0,
             "jira_references": ["MNG-7891"],
             "github_pr_references": ["1234"],

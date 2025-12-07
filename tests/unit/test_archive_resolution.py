@@ -16,13 +16,14 @@
 
 """Unit tests for archive URL resolution."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from mail_mcp.ponymail import (
+    PonymailResolver,
     get_archive_url,
     lookup_mid_by_search,
-    PonymailResolver,
 )
 
 

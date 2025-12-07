@@ -16,9 +16,9 @@
 
 """Email indexing pipeline for bulk processing mbox files."""
 
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import AsyncIterator
 
 import structlog
 
@@ -93,7 +93,7 @@ class EmailIndexer:
 
             # Temporal information
             "date": email.date.isoformat() if email.date else None,
-            "indexed_at": datetime.now(timezone.utc).isoformat(),
+            "indexed_at": datetime.now(UTC).isoformat(),
 
             # List information
             "list_address": final_list_address,

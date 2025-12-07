@@ -244,7 +244,10 @@ class EmailParser:
             if part.get_content_disposition() == "attachment":
                 return True
             content_type = part.get_content_type()
-            if content_type not in ("text/plain", "text/html", "multipart/alternative", "multipart/mixed"):
+            allowed_types = (
+                "text/plain", "text/html", "multipart/alternative", "multipart/mixed"
+            )
+            if content_type not in allowed_types:
                 return True
 
         return False

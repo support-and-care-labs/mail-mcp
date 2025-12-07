@@ -116,25 +116,79 @@ The virtual environment will activate automatically when entering this directory
 
 === Code Quality Tools
 
-Linter and formatter::
+The project provides a `Makefile` for common development tasks, ensuring consistency between local development and CI.
+
+==== Using Make (Recommended)
+
 [source,bash]
 ----
-poetry run ruff check .
+# Run all checks (lint, typecheck, unit tests)
+make
+
+# Individual targets
+make lint        # Run ruff linter
+make typecheck   # Run mypy type checker
+make test        # Run unit tests only
+make test-all    # Run all tests including integration (requires Docker)
+make build       # Build Python wheel and sdist
+make docker      # Build Docker image locally
+make clean       # Remove build artifacts and caches
+make help        # Show all available targets
+----
+
+==== Using Poetry Directly
+
+[source,bash]
+----
+poetry run ruff check src/ tests/
 poetry run ruff format .
+poetry run mypy src/ --ignore-missing-imports
+poetry run pytest tests/unit/ -v
 ----
 
-Type checking::
+== Continuous Integration
+
+=== GitHub Actions
+
+The project uses GitHub Actions for CI (`.github/workflows/ci.yml`).
+The workflow runs on every push and pull request to main:
+
+1. **test job**: Runs lint, typecheck, and unit tests
+2. **docker job**: Builds Docker image and pushes to GHCR (on main branch only)
+
+=== Local CI Testing with act
+
+You can run the GitHub Actions workflow locally using https://github.com/nektos/act[act]:
+
 [source,bash]
 ----
-poetry run mypy src/
+# Install act (macOS)
+brew install act
+
+# Run the CI workflow locally
+act
+
+# Run a specific job
+act -j test
+act -j docker
 ----
 
-Tests::
+TIP: For Apple Silicon (ARM64), create a local `.actrc` file (gitignored):
+[source]
+----
+--container-architecture linux/arm64
+----
+
+=== CI Checks
+
+The `make ci` target runs the same checks as GitHub Actions:
+
 [source,bash]
 ----
-poetry run pytest
-poetry run pytest --cov=mail_mcp
+make ci  # Runs: lint, typecheck, test
 ----
+
+This ensures local development matches CI behavior.
 
 == Development Workflow
 
@@ -151,15 +205,21 @@ poetry run pytest --cov=mail_mcp
 
 [source,bash]
 ----
-# Run all tests
-poetry run pytest
+# Run unit tests (fast, no external dependencies)
+make test
+
+# Run all tests including integration tests (requires Docker for Testcontainers)
+make test-all
 
 # Run with coverage
 poetry run pytest --cov=mail_mcp --cov-report=html
 
 # Run specific test file
-poetry run pytest tests/test_email_parser.py
+poetry run pytest tests/unit/test_email_parser.py -v
 ----
+
+NOTE: Integration tests use https://testcontainers.com/[Testcontainers] to automatically start Elasticsearch in Docker.
+You don't need to run Elasticsearch separately - just ensure Docker is running.
 
 === Working with Elasticsearch
 

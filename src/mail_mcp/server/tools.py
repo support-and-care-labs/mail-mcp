@@ -20,10 +20,9 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from mcp.server.fastmcp import Context
 
 from mail_mcp.config import settings
-from mail_mcp.ponymail import get_archive_url, PonymailResolver
+from mail_mcp.ponymail import PonymailResolver, get_archive_url
 from mail_mcp.storage.elasticsearch import ElasticsearchClient
 
 logger = structlog.get_logger(__name__)
@@ -523,11 +522,16 @@ async def search_by_contributor(
 
     # Contributor can match either email address or name
     # Use case_insensitive for keyword fields to match regardless of case
+    contributor_pattern = f"*{contributor}*"
     must_conditions.append({
         "bool": {
             "should": [
-                {"wildcard": {"from_address": {"value": f"*{contributor}*", "case_insensitive": True}}},
-                {"wildcard": {"from_name.keyword": {"value": f"*{contributor}*", "case_insensitive": True}}},
+                {"wildcard": {
+                    "from_address": {"value": contributor_pattern, "case_insensitive": True}
+                }},
+                {"wildcard": {
+                    "from_name.keyword": {"value": contributor_pattern, "case_insensitive": True}
+                }},
             ],
             "minimum_should_match": 1
         }
