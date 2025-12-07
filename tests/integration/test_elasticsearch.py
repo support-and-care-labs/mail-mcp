@@ -40,7 +40,8 @@ async def test_create_index(es_client, test_settings, clean_elasticsearch):
     await es_client.create_index(list_name)
 
     # Verify index exists
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # NOTE: ElasticsearchClient uses global settings, not test_settings
+    index_name = get_index_name("maven", list_name)
     exists = await es_client._client.indices.exists(index=index_name)
     assert exists
 
@@ -78,10 +79,11 @@ async def test_index_and_retrieve_document(es_client, test_settings, clean_elast
     }
 
     # Index the document
-    await es_client.index_document(list_name, doc)
+    await es_client.index_document(list_name, doc["message_id"], doc)
 
     # Refresh index to make document searchable
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # NOTE: ElasticsearchClient uses global settings, not test_settings
+    index_name = get_index_name("maven", list_name)
     await es_client._client.indices.refresh(index=index_name)
 
     # Retrieve the document
@@ -127,10 +129,11 @@ async def test_search_all_documents(es_client, test_settings, clean_elasticsearc
             "has_vote": False,
             "vote_value": None,
         }
-        await es_client.index_document(list_name, doc)
+        await es_client.index_document(list_name, doc["message_id"], doc)
 
     # Refresh index
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # NOTE: ElasticsearchClient uses global settings, not test_settings
+    index_name = get_index_name("maven", list_name)
     await es_client._client.indices.refresh(index=index_name)
 
     # Search for all documents
@@ -184,10 +187,11 @@ async def test_search_by_subject(es_client, test_settings, clean_elasticsearch):
     ]
 
     for doc in docs:
-        await es_client.index_document(list_name, doc)
+        await es_client.index_document(list_name, doc["message_id"], doc)
 
     # Refresh index
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # NOTE: ElasticsearchClient uses global settings, not test_settings
+    index_name = get_index_name("maven", list_name)
     await es_client._client.indices.refresh(index=index_name)
 
     # Search for "Maven"
@@ -221,10 +225,11 @@ async def test_search_with_jira_filter(es_client, test_settings, clean_elasticse
             "jira_references": ["MNG-1234"] if i == 1 else [],
             "has_vote": False,
         }
-        await es_client.index_document(list_name, doc)
+        await es_client.index_document(list_name, doc["message_id"], doc)
 
     # Refresh index
-    index_name = get_index_name(test_settings.elasticsearch_index_prefix, list_name)
+    # NOTE: ElasticsearchClient uses global settings, not test_settings
+    index_name = get_index_name("maven", list_name)
     await es_client._client.indices.refresh(index=index_name)
 
     # Search for documents with JIRA references

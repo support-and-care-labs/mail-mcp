@@ -153,6 +153,14 @@ EMAIL_INDEX_MAPPING = {
         },
         "mbox_offset": {
             "type": "long"
+        },
+
+        # External archive reference (on-demand caching)
+        # Pony Mail permalink ID for direct URL to lists.apache.org
+        # Populated on first access via Pony Mail API lookup
+        # See docs/adr/0003-archive-url-resolution.adoc
+        "archive_mid": {
+            "type": "keyword"
         }
     }
 }

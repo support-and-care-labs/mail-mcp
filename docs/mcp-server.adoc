@@ -229,6 +229,43 @@ The MCP server provides rich metadata extraction:
 * **Decision indicators**: Keywords like "decided", "consensus", "approved"
 * **Vote detection**: Identifies [VOTE] threads and +1/-1 votes
 * **Quote filtering**: Separates quoted content from original contributions
+* **Archive URLs**: Direct links to emails at https://lists.apache.org (when cached)
+
+=== Archive URLs
+
+When available, search results include an `Archive:` field with a direct link to the email at https://lists.apache.org.
+This allows viewing the original email in the Apache Pony Mail web interface.
+
+Archive URLs are resolved on-demand and cached in Elasticsearch.
+To populate the cache for a specific message:
+
+[source,python]
+----
+import asyncio
+from datetime import datetime
+from mail_mcp.ponymail import PonymailResolver
+from mail_mcp.storage.elasticsearch import ElasticsearchClient
+
+async def cache_archive_url():
+    es = ElasticsearchClient()
+    await es.connect()
+
+    resolver = PonymailResolver(es)
+    url = await resolver.resolve_url(
+        message_id='<message-id@example.org>',
+        list_name='dev@maven.apache.org',
+        date=datetime(2024, 10, 1),  # approximate date
+        subject='Email subject for search'
+    )
+    print(f'Archive URL: {url}')
+    await es.close()
+
+asyncio.run(cache_archive_url())
+----
+
+Once cached, the Archive URL will appear in all MCP tool outputs for that message.
+
+See xref:adr/0003-archive-url-resolution.adoc[ADR-0003] for technical details on the URL resolution strategy.
 
 == Troubleshooting
 

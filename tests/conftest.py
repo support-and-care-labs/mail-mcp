@@ -85,9 +85,10 @@ async def clean_elasticsearch(es_client):
     # Get all indices
     if es_client._client:
         indices = await es_client._client.indices.get(index="*")
-        # Delete all test indices
+        # Delete all test indices (both test- and maven- prefixes)
+        # NOTE: ElasticsearchClient uses global settings with "maven" prefix
         for index_name in indices.keys():
-            if index_name.startswith("test-"):
+            if index_name.startswith("test-") or index_name.startswith("maven-"):
                 await es_client._client.indices.delete(index=index_name)
 
     yield
@@ -96,5 +97,5 @@ async def clean_elasticsearch(es_client):
     if es_client._client:
         indices = await es_client._client.indices.get(index="*")
         for index_name in indices.keys():
-            if index_name.startswith("test-"):
+            if index_name.startswith("test-") or index_name.startswith("maven-"):
                 await es_client._client.indices.delete(index=index_name)

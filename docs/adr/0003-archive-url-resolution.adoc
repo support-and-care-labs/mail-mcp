@@ -1,0 +1,188 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+= ADR-0003: Archive URL Resolution Strategy
+:toc:
+:toclevels: 3
+
+== Status
+
+Accepted
+
+*Decision Date*: 2024-12-05
+
+*Key Decision*: On-demand lookup with caching (Option D) selected for initial implementation, with planned migration to indexing-time resolution (Option C).
+
+== Context
+
+When displaying email search results from the MCP, users need links to the original emails in the Apache mailing list archives at https://lists.apache.org/.
+This allows users to view the full email, thread context, and access the authoritative source.
+
+=== Problem
+
+The Apache mailing list archives use Pony Mail, which generates permalink IDs (`mid`) using a hash algorithm.
+These `mid` values are required to construct direct URLs to emails and threads.
+
+Example URL format::
+  `https://lists.apache.org/thread/241rf6j48ogn4ynmzszyo5535mq3v5v5`
+
+The challenge is that:
+
+. The mbox files we download only contain the RFC `Message-ID` header (e.g., `<fc4e88e3-3638-4c55-b489-86d69b375d77@apache.org>`)
+. The Pony Mail `mid` is a hash generated at archive time using DKIM canonicalization
+. The mbox content we receive differs from the original archived content (different headers, line endings)
+. Therefore, we cannot reliably regenerate the `mid` from our mbox data
+
+=== Investigation Results
+
+The following approaches were tested:
+
+|===
+|Approach |Result
+
+|API lookup by Message-ID
+|*404 - Not supported* (API only accepts `mid`)
+
+|API lookup by `mid`
+|*Works* - returns full email including `message-id`
+
+|Search API
+|*Works* - returns both `mid` and `message-id` mapping
+
+|Regenerate `mid` from mbox
+|*Fails* - content differs from archived original
+|===
+
+The Pony Mail `mid` is generated using:
+
+. RFC 6376 DKIM canonicalization (relaxed headers, simple body)
+. Selection of specific RFC 4871 headers
+. HMAC-SHA256 with list-id as key
+. Custom base32 encoding ("pibble32")
+
+See: https://github.com/apache/incubator-ponymail-foal/blob/master/tools/plugins/generators.py[Pony Mail generators.py]
+
+== Decision
+
+We will implement *Option D: On-demand lookup with caching*, with a planned future migration to *Option C: Indexing-time resolution*.
+
+=== Options Considered
+
+Option A - No direct URLs::
+  Just display `Message-ID`, users manually search on lists.apache.org.
+  +
+  *Rejected*: Poor user experience, defeats purpose of providing archive links.
+
+Option B - Search URL::
+  Generate search URLs that find the email (e.g., by date range and subject keywords).
+  +
+  *Rejected*: Unreliable, may return multiple results or no results.
+
+Option C - Indexing-time resolution (preferred future approach)::
+  Query Pony Mail API during indexing to resolve and store `mid` for each email.
+  +
+  *Pros*: Direct URLs always available, no runtime API calls.
+  +
+  *Cons*: Requires API calls during indexing (rate limiting concerns for 20+ years of archives).
+  +
+  *Status*: Preferred approach for future migration.
+
+Option D - On-demand lookup with caching (selected)::
+  Query Pony Mail API when displaying results, cache `mid` in Elasticsearch.
+  +
+  *Pros*: No bulk API calls during indexing, gradual cache population.
+  +
+  *Cons*: First access requires API call, potential latency.
+
+=== Implementation Approach
+
+. Add `archive_mid` field to Elasticsearch schema (optional, nullable)
+. Create `PonymailResolver` class with caching support
+. On first request for archive URL:
+.. Check if `archive_mid` is cached in Elasticsearch
+.. If not cached, query Pony Mail search API by date range and subject
+.. Match result by `message-id` to get `mid`
+.. Cache `mid` in Elasticsearch for future use
+.. Return constructed URL
+. Update MCP tools to include archive URLs in output
+
+=== API Usage
+
+The Pony Mail search API returns both `mid` and `message-id`:
+
+[source,bash]
+----
+curl "https://lists.apache.org/api/stats.lua?list=dev&domain=maven.apache.org&d=2024-10&q=Fluido+Skin"
+----
+
+Response includes:
+[source,json]
+----
+{
+  "emails": [
+    {
+      "mid": "241rf6j48ogn4ynmzszyo5535mq3v5v5",
+      "message-id": "<fc4e88e3-3638-4c55-b489-86d69b375d77@apache.org>",
+      "subject": "[RESULT] [VOTE] Release Maven Fluido Skin version 2.0.0-M11",
+      ...
+    }
+  ]
+}
+----
+
+== Consequences
+
+=== Positive
+
+* *No bulk API calls*: Indexing proceeds without hitting Pony Mail API
+* *Gradual cache build*: Cache populates as users access emails
+* *Graceful degradation*: If API unavailable, display Message-ID as fallback
+* *Future migration path*: Can migrate to Option C without schema changes
+
+=== Negative
+
+* *First-access latency*: Initial URL resolution requires API call (~100-500ms)
+* *API dependency*: Runtime dependency on lists.apache.org availability
+* *Incomplete coverage*: Some emails may not be found via search API
+
+=== Neutral
+
+* *Cache storage*: Minimal overhead (one field per document)
+* *Rate limiting*: On-demand approach naturally rate-limits API usage
+
+== Migration to Option C
+
+When migrating to indexing-time resolution:
+
+. Add batch `mid` resolution to indexing pipeline
+. Implement rate limiting (e.g., 1 request per 100ms)
+. Process historical backlog in batches during off-peak hours
+. Remove on-demand lookup once all documents have `archive_mid` populated
+
+Trigger for migration::
+  When the caching approach shows limitations (high cache miss rate, user complaints about latency).
+
+== Implementation Files
+
+* `src/mail_mcp/ponymail.py` - Pony Mail API client and resolver
+* `src/mail_mcp/storage/schema.py` - Add `archive_mid` field
+* `src/mail_mcp/server/tools.py` - Include archive URLs in output
+
+== References
+
+* https://lists.apache.org/api/[Apache Pony Mail API]
+* https://github.com/apache/incubator-ponymail-foal[Apache Pony Mail Foal]
+* https://ponymail.apache.org/docs/api.html[Pony Mail API Documentation]

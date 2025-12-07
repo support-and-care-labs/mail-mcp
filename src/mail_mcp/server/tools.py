@@ -23,9 +23,26 @@ import structlog
 from mcp.server.fastmcp import Context
 
 from mail_mcp.config import settings
+from mail_mcp.ponymail import get_archive_url
 from mail_mcp.storage.elasticsearch import ElasticsearchClient
 
 logger = structlog.get_logger(__name__)
+
+
+def format_archive_url(source: dict) -> str | None:
+    """
+    Format archive URL from cached mid if available.
+
+    Args:
+        source: Document source from Elasticsearch
+
+    Returns:
+        Archive URL string if mid is cached, None otherwise
+    """
+    archive_mid = source.get("archive_mid")
+    if archive_mid:
+        return get_archive_url(archive_mid)
+    return None
 
 
 # Global Elasticsearch client (will be initialized on first use)
@@ -171,6 +188,11 @@ async def search_emails(
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
+        # Archive URL (if cached)
+        archive_url = format_archive_url(source)
+        if archive_url:
+            output.append(f"Archive: {archive_url}")
+
         if source.get("jira_references"):
             output.append(f"JIRA: {', '.join(source['jira_references'])}")
         if source.get("github_pr_references"):
@@ -227,6 +249,12 @@ async def get_message(
     # Format message
     output = ["=== Email Message ===\n"]
     output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
+
+    # Archive URL (if cached)
+    archive_url = format_archive_url(source)
+    if archive_url:
+        output.append(f"Archive: {archive_url}")
+
     output.append(f"Subject: {source.get('subject', 'N/A')}")
     output.append(
         f"From: {source.get('from_name', 'Unknown')} <{source.get('from_address', 'N/A')}>"
@@ -358,6 +386,12 @@ async def get_thread(
         source = hit["_source"]
         output.append(f"\n--- Message {i} ---")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
+
+        # Archive URL (if cached)
+        archive_url = format_archive_url(source)
+        if archive_url:
+            output.append(f"Archive: {archive_url}")
+
         output.append(f"Subject: {source.get('subject', 'N/A')}")
         output.append(
             f"From: {source.get('from_name', 'Unknown')} <{source.get('from_address', 'N/A')}>"
@@ -417,11 +451,12 @@ async def search_by_contributor(
     must_conditions = []
 
     # Contributor can match either email address or name
+    # Use case_insensitive for keyword fields to match regardless of case
     must_conditions.append({
         "bool": {
             "should": [
-                {"wildcard": {"from_address": f"*{contributor}*"}},
-                {"wildcard": {"from_name": f"*{contributor}*"}},
+                {"wildcard": {"from_address": {"value": f"*{contributor}*", "case_insensitive": True}}},
+                {"wildcard": {"from_name.keyword": {"value": f"*{contributor}*", "case_insensitive": True}}},
             ],
             "minimum_should_match": 1
         }
@@ -470,6 +505,11 @@ async def search_by_contributor(
         )
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
+
+        # Archive URL (if cached)
+        archive_url = format_archive_url(source)
+        if archive_url:
+            output.append(f"Archive: {archive_url}")
 
         if source.get("jira_references"):
             output.append(f"JIRA: {', '.join(source['jira_references'])}")
@@ -555,6 +595,11 @@ async def find_references(
         )
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
+
+        # Archive URL (if cached)
+        archive_url = format_archive_url(source)
+        if archive_url:
+            output.append(f"Archive: {archive_url}")
 
         # Show all references
         if source.get("jira_references"):

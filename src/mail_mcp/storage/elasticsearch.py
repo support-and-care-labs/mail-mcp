@@ -244,6 +244,52 @@ class ElasticsearchClient:
             logger.debug("document_not_found", index=index_name, message_id=message_id)
             return None
 
+    async def update_document(
+        self,
+        list_name: str,
+        message_id: str,
+        partial_doc: dict
+    ) -> bool:
+        """
+        Partially update a document.
+
+        Args:
+            list_name: Mailing list address
+            message_id: Email message ID (document ID)
+            partial_doc: Fields to update
+
+        Returns:
+            True if update was successful, False if document not found
+
+        Raises:
+            Exception: If update fails for reasons other than not found
+        """
+        if not self._client:
+            raise RuntimeError("Client not connected. Call connect() first.")
+
+        index_name = get_index_name(settings.elasticsearch_index_prefix, list_name)
+
+        try:
+            await self._client.update(
+                index=index_name,
+                id=message_id,
+                doc=partial_doc
+            )
+            logger.debug(
+                "document_updated",
+                index=index_name,
+                message_id=message_id,
+                fields=list(partial_doc.keys())
+            )
+            return True
+        except NotFoundError:
+            logger.debug(
+                "document_not_found_for_update",
+                index=index_name,
+                message_id=message_id
+            )
+            return False
+
     async def search(
         self,
         list_name: str,
