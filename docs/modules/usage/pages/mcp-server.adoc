@@ -15,8 +15,8 @@
 //
 
 = MCP Server Setup and Usage
-:toc:
-:toclevels: 3
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 3]
 
 == Overview
 
@@ -288,7 +288,7 @@ asyncio.run(cache_archive_url())
 
 Once cached, the Archive URL will appear in all MCP tool outputs for that message.
 
-See xref:adr/0003-archive-url-resolution.adoc[ADR-0003] for technical details on the URL resolution strategy.
+See xref:development:adr/0003-archive-url-resolution.adoc[ADR-0003] for technical details on the URL resolution strategy.
 
 == Troubleshooting
 
@@ -341,7 +341,7 @@ curl http://localhost:9200/_cluster/health
 * **Thread limits**: Default 50 messages, configurable
 * **Cache**: Elasticsearch handles caching automatically
 
-For large-scale deployments, see xref:development.adoc#performance-optimization[Performance Optimization].
+For large-scale deployments, see xref:development:development.adoc#performance-optimization[Performance Optimization].
 
 == Security Notes
 
@@ -352,7 +352,7 @@ For large-scale deployments, see xref:development.adoc#performance-optimization[
 
 == Related Documentation
 
-* xref:development.adoc[Development Guide]
+* xref:development:development.adoc[Development Guide]
 * xref:data-management.adoc[Data Management]
-* xref:roadmap.adoc[Roadmap and Features]
+* xref:development:roadmap.adoc[Roadmap and Features]
 * https://modelcontextprotocol.io/[Model Context Protocol Specification]

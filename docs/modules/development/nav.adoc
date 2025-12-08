@@ -1,0 +1,26 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+.Development
+* xref:development:development.adoc[Development Guide]
+* xref:development:testing-mcp.adoc[Testing]
+* xref:development:analysis-scripts.adoc[Analysis Scripts]
+* xref:development:roadmap.adoc[Roadmap]
+* Architecture Decision Records
+** xref:development:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
+** xref:development:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
+** xref:development:adr/0003-archive-url-resolution.adoc[ADR-0003: Archive URL Resolution]
+** xref:development:adr/0004-lenient-mypy-configuration.adoc[ADR-0004: Lenient Mypy Config]

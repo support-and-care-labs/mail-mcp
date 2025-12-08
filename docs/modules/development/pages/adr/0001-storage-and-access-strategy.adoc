@@ -15,8 +15,8 @@
 //
 
 = ADR-0001: Storage and Access Strategy for Mailing List Data
-:toc:
-:toclevels: 3
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 3]
 
 == Status
 

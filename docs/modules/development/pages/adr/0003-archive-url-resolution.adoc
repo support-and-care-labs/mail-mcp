@@ -15,8 +15,8 @@
 //
 
 = ADR-0003: Archive URL Resolution Strategy
-:toc:
-:toclevels: 3
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 3]
 
 == Status
 

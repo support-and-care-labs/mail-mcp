@@ -15,7 +15,7 @@
 //
 
 = Analysis Scripts
-:toc:
+ifndef::env-site[:toc:]
 :icons: font
 
 This document describes the analysis scripts available in the `scripts/` directory.

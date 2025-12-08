@@ -15,8 +15,8 @@
 //
 
 = Data Management
-:toc:
-:toclevels: 2
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 2]
 
 == Overview
 
@@ -127,7 +127,7 @@ curl "https://lists.apache.org/api/mbox.lua?list=dev@maven.apache.org&date=2024-
 
 Once indexed, email data is stored in Elasticsearch.
 
-Index naming:: `{prefix}-{list}` (e.g., `maven-dev`)
+Index naming:: pass:c[`{prefix}-{list}`] (e.g., `maven-dev`)
 Document ID:: Email Message-ID header
 Data model:: See `src/mail_mcp/storage/schema.py`
 
@@ -247,6 +247,6 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-restore
 
 == Related Documentation
 
-* xref:development.adoc[Development Guide]
+* xref:development:development.adoc[Development Guide]
 * xref:docker.adoc[Docker Setup]
-* xref:../README.adoc[Project README]
+* Project README

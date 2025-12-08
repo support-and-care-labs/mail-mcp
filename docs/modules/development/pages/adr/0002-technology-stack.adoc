@@ -15,8 +15,8 @@
 //
 
 = ADR-0002: Technology Stack and Implementation
-:toc:
-:toclevels: 3
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 3]
 
 == Status
 
@@ -24,7 +24,7 @@ Accepted (2025-01-16)
 
 == Context
 
-Following xref:0001-storage-and-access-strategy.adoc[ADR-0001], we have decided to implement mail-mcp using Elasticsearch as the primary storage backend.
+Following xref:development:adr/0001-storage-and-access-strategy.adoc[ADR-0001], we have decided to implement mail-mcp using Elasticsearch as the primary storage backend.
 This ADR defines the specific technologies, libraries, and frameworks to be used for the implementation.
 
 === Requirements from ADR-0001
@@ -756,4 +756,4 @@ The existing `bin/retrieve-mbox.groovy` script will be **completely replaced** w
 * https://docs.pydantic.dev/[Pydantic Documentation]
 * https://docs.pytest.org/[Pytest Documentation]
 * https://www.structlog.org/[Structlog]
-* xref:0001-storage-and-access-strategy.adoc[ADR-0001: Storage and Access Strategy]
+* xref:development:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage and Access Strategy]

@@ -51,7 +51,7 @@ maven-mail-mcp
 
 == Documentation
 
-See xref:docs/index.adoc[Documentation] for:
+See xref:docs/modules/ROOT/pages/index.adoc[Documentation] for:
 
 * Development guide and CI
 * Docker setup

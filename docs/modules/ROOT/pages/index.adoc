@@ -15,8 +15,8 @@
 //
 
 = mail-mcp Documentation
-:toc:
-:toclevels: 2
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 2]
 
 == Overview
 
@@ -30,37 +30,37 @@ MCP server implementation in progress.
 
 == Quick Start
 
-See xref:../README.adoc[README] for prerequisites and initial setup.
+See the project README for prerequisites and initial setup.
 
 == Documentation
 
 === Getting Started
 
-xref:development.adoc[Development Guide]::
+xref:development:development.adoc[Development Guide]::
 Development workflow, project structure, virtual environment setup, and CI.
 
-xref:docker.adoc[Docker Setup]::
+xref:usage:docker.adoc[Docker Setup]::
 Running Elasticsearch and related services with Docker Compose.
 
 === Using the MCP Server
 
-xref:mcp-server.adoc[MCP Server Guide]::
+xref:usage:mcp-server.adoc[MCP Server Guide]::
 Setting up and using the MCP server with Claude Desktop.
 
-xref:data-management.adoc[Data Management]::
+xref:usage:data-management.adoc[Data Management]::
 Working with mbox files, downloading archives, and indexing.
 
 === Analysis and Testing
 
-xref:analysis-scripts.adoc[Analysis Scripts]::
+xref:development:analysis-scripts.adoc[Analysis Scripts]::
 Scripts for analyzing and exploring the email archives.
 
-xref:testing-mcp.adoc[Testing MCP]::
+xref:development:testing-mcp.adoc[Testing MCP]::
 Testing the MCP server implementation.
 
 === Project Status
 
-xref:roadmap.adoc[Roadmap]::
+xref:development:roadmap.adoc[Roadmap]::
 Implementation status and planned features.
 
 == Architecture Decisions
@@ -71,19 +71,19 @@ Architecture Decision Records document key technical decisions:
 |===
 |ADR |Title |Status
 
-|xref:adr/0001-storage-and-access-strategy.adoc[ADR-0001]
+|xref:development:adr/0001-storage-and-access-strategy.adoc[ADR-0001]
 |Storage and Access Strategy (Elasticsearch)
 |Accepted
 
-|xref:adr/0002-technology-stack.adoc[ADR-0002]
+|xref:development:adr/0002-technology-stack.adoc[ADR-0002]
 |Technology Stack (Python 3.11+)
 |Accepted
 
-|xref:adr/0003-archive-url-resolution.adoc[ADR-0003]
+|xref:development:adr/0003-archive-url-resolution.adoc[ADR-0003]
 |Archive URL Resolution (Pony Mail)
 |Accepted
 
-|xref:adr/0004-lenient-mypy-configuration.adoc[ADR-0004]
+|xref:development:adr/0004-lenient-mypy-configuration.adoc[ADR-0004]
 |Lenient mypy Configuration for MVP
 |Accepted
 
@@ -93,6 +93,6 @@ Architecture Decision Records document key technical decisions:
 
 This project is one MCP server within the maven-mcps umbrella project.
 
-* xref:../../docs/index.adoc[Maven MCPs Documentation] - umbrella project docs
-* xref:../../docs/usage/index.adoc[Usage Documentation] - using MCPs together
-* xref:../../docs/external/index.adoc[External MCPs] - third-party MCP servers
+* xref:maven-mcps::index.adoc[Maven MCPs Documentation] - umbrella project docs
+* xref:maven-mcps:usage:index.adoc[Usage Documentation] - using MCPs together
+* xref:maven-mcps:components:index.adoc[Components Catalog] - internal and external MCPs

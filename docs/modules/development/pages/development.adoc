@@ -15,8 +15,8 @@
 //
 
 = Development Guide
-:toc:
-:toclevels: 3
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 3]
 
 == Project Structure
 
@@ -223,7 +223,7 @@ You don't need to run Elasticsearch separately - just ensure Docker is running.
 
 === Working with Elasticsearch
 
-See xref:docker.adoc[Docker Setup] for running Elasticsearch locally.
+See xref:usage:docker.adoc[Docker Setup] for running Elasticsearch locally.
 
 [source,bash]
 ----
@@ -379,7 +379,7 @@ When contributing to mail-mcp:
 
 == Related Documentation
 
-* xref:docker.adoc[Docker Setup]
-* xref:data-management.adoc[Data Management]
+* xref:usage:docker.adoc[Docker Setup]
+* xref:usage:data-management.adoc[Data Management]
 * xref:roadmap.adoc[Roadmap and Implementation Status]
-* xref:adr/[Architecture Decision Records]
+* xref:development:adr/0001-storage-and-access-strategy.adoc[Architecture Decision Records]

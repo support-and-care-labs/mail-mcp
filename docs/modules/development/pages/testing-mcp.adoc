@@ -15,8 +15,8 @@
 //
 
 = Testing the MCP Server Interactively
-:toc:
-:toclevels: 2
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 2]
 
 == Prerequisites
 
@@ -429,6 +429,6 @@ npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
 
 == Related Documentation
 
-* xref:mcp-server.adoc[MCP Server Setup and Usage]
+* xref:usage:mcp-server.adoc[MCP Server Setup and Usage]
 * xref:development.adoc[Development Guide]
-* xref:data-management.adoc[Data Management]
+* xref:usage:data-management.adoc[Data Management]

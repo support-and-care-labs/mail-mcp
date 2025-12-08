@@ -15,8 +15,8 @@
 //
 
 = Roadmap and Implementation Status
-:toc:
-:toclevels: 2
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 2]
 
 == Overview
 
@@ -190,7 +190,7 @@ From ADRs and development process:
 . **Citation handling**: How aggressive to filter quoted content?
 . **Cross-posting**: Deduplicate messages sent to multiple lists?
 
-See xref:adr/[Architecture Decision Records] for detailed discussions.
+See xref:development:adr/0001-storage-and-access-strategy.adoc[Architecture Decision Records] for detailed discussions.
 
 == Contributing
 
@@ -208,6 +208,6 @@ Priority areas for contribution:
 == Related Documentation
 
 * xref:development.adoc[Development Guide]
-* xref:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
-* xref:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
-* xref:../README.adoc[Project README]
+* xref:development:adr/0001-storage-and-access-strategy.adoc[ADR-0001: Storage Strategy]
+* xref:development:adr/0002-technology-stack.adoc[ADR-0002: Technology Stack]
+* Project README

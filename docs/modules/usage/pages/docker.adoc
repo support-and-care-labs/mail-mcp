@@ -15,8 +15,8 @@
 //
 
 = Docker Setup
-:toc:
-:toclevels: 2
+ifndef::env-site[:toc:]
+ifndef::env-site[:toclevels: 2]
 
 == Overview
 
@@ -349,5 +349,5 @@ See Elasticsearch documentation for production best practices.
 
 == Related Documentation
 
-* xref:development.adoc[Development Guide]
-* xref:../README.adoc[Project README]
+* xref:development:development.adoc[Development Guide]
+* Project README
