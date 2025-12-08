@@ -136,13 +136,13 @@ Data model:: See `src/mail_mcp/storage/schema.py`
 [source,bash]
 ----
 # List indices
-curl http://localhost:9200/_cat/indices?v
+curl http://localhost:59200/_cat/indices?v
 
 # Count documents
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 
 # Get a specific message
-curl http://localhost:9200/maven-dev/_doc/<message-id>
+curl http://localhost:59200/maven-dev/_doc/<message-id>
 ----
 
 == Data Lifecycle

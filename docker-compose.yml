@@ -28,8 +28,8 @@ services:
       - cluster.name=mail-mcp-cluster
       - node.name=mail-mcp-node
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "59200:9200"
+      - "59300:9300"
     volumes:
       - es-data:/usr/share/elasticsearch/data
     healthcheck:
@@ -49,7 +49,7 @@ services:
       - SERVER_NAME=mail-mcp-kibana
       - SERVER_HOST=0.0.0.0
     ports:
-      - "5601:5601"
+      - "55601:5601"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -87,9 +87,9 @@ services:
     networks:
       - mail-mcp-network
     restart: unless-stopped
-    # HTTP transport exposed on port 8080
+    # HTTP transport exposed on port 58080
     ports:
-      - "8080:8080"
+      - "58080:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health').read()"]
       interval: 30s

@@ -22,31 +22,48 @@ MCP server for accessing and analyzing Apache Maven mailing list archives.
 
 === Prerequisites
 
-* Python 3.11+
-* Docker Desktop (for Elasticsearch)
+* Docker Desktop (or Podman) with Docker Compose V2
 
 === Setup
 
 [source,bash]
 ----
-# Install dependencies
-pip install -e ".[dev]"
+# Start all services (Elasticsearch, mail-mcp, scheduler)
+docker compose up -d
 
-# Start Elasticsearch
-docker compose up -d elasticsearch
+# Retrieve mailing list archives (first time only)
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} || true
+  done
+done
 
-# Download mailing list data
-retrieve-mbox --date 2024-10
-
-# Index the data
-index-mbox data/dev/*.mbox
+# Index all downloaded mbox files
+docker compose exec scheduler index-mbox --directory /app/data/dev/
 ----
 
-=== Run MCP Server
+=== Connect MCP Client
+
+The MCP server runs on port 58080 via HTTP/SSE transport:
 
 [source,bash]
 ----
-maven-mail-mcp
+# Claude Code
+claude mcp add maven-mail --transport sse http://localhost:58080/sse
+----
+
+Or add to Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+[source,json]
+----
+{
+  "mcpServers": {
+    "maven-mail": {
+      "transport": "sse",
+      "url": "http://localhost:58080/sse"
+    }
+  }
+}
 ----
 
 == Documentation

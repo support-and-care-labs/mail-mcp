@@ -263,7 +263,7 @@ docker compose ps
 docker compose up -d elasticsearch
 
 # Verify it's accessible
-curl http://localhost:9200
+curl http://localhost:59200
 ----
 
 === Empty Results
@@ -274,7 +274,7 @@ If searches return no results:
 +
 [source,bash]
 ----
-curl 'http://localhost:9200/maven-dev/_count'
+curl 'http://localhost:59200/maven-dev/_count'
 ----
 
 . Re-index if needed:

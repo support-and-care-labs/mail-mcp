@@ -5,7 +5,7 @@
       "args": ["run", "maven-mail-mcp"],
       "cwd": "/Users/ascheman/wrk/maven/maven-support-and-care/maven-mcps/mail-mcp",
       "env": {
-        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
+        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:59200",
         "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
         "MAIL_MCP_LOG_LEVEL": "INFO"
       }

@@ -80,7 +80,7 @@ The `docker-compose.yml` defines the following services:
 
 - **elasticsearch**: Elasticsearch 8.11 for storing and searching email data
 - **kibana**: Kibana for data visualization
-- **mail-mcp**: The MCP server (HTTP transport on port 8080)
+- **mail-mcp**: The MCP server (HTTP transport on port 58080)
 - **scheduler**: Runs hourly to fetch and re-index the current month's mbox
 
 ```bash

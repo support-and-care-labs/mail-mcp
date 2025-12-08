@@ -48,18 +48,56 @@ Web UI for exploring and visualizing Elasticsearch data.
 
 Image:: `docker.elastic.co/kibana/kibana:8.11.0`
 Ports:: 5601 (HTTP)
-Access:: http://localhost:5601
+Access:: http://localhost:55601
 Features::
 * Discover - Search and filter documents
 * Visualizations - Create charts and graphs
 * Dashboards - Combined visualizations
 * Dev Tools - Run Elasticsearch queries directly
 
-=== mail-mcp (future)
+=== mail-mcp
 
-MCP server application.
+MCP server application providing HTTP/SSE transport.
 
-Current status:: Container defined but server not yet implemented
+Image:: Built from local Dockerfile
+Ports:: 58080 (HTTP/SSE)
+Access:: http://localhost:58080/sse (for MCP clients)
+Health check:: http://localhost:58080/health
+
+=== scheduler
+
+Background service for automatic mbox updates.
+
+Image:: Built from local Dockerfile
+Schedule:: Hourly updates of current month's mbox
+Function:: Retrieves and re-indexes latest emails automatically
+
+== Connecting MCP Clients
+
+Once services are running, configure your MCP client to connect via SSE:
+
+=== Claude Code
+
+[source,bash]
+----
+claude mcp add maven-mail --transport sse http://localhost:58080/sse
+----
+
+=== Claude Desktop
+
+Add to your configuration file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+[source,json]
+----
+{
+  "mcpServers": {
+    "maven-mail": {
+      "transport": "sse",
+      "url": "http://localhost:58080/sse"
+    }
+  }
+}
+----
 
 == Common Commands
 
@@ -67,21 +105,19 @@ Current status:: Container defined but server not yet implemented
 
 [source,bash]
 ----
+# Start all services (Elasticsearch, mail-mcp, scheduler)
+docker compose up -d
+
 # Start Elasticsearch only
-docker compose up elasticsearch
+docker compose up -d elasticsearch
 
-# Start Elasticsearch and Kibana (recommended for development)
-docker compose up elasticsearch kibana
-
-# Start all services (when MCP server is implemented)
-docker compose up
-
-# Run in detached mode (background)
+# Start Elasticsearch and Kibana (for data exploration)
 docker compose up -d elasticsearch kibana
 
 # View logs
+docker compose logs -f mail-mcp
+docker compose logs -f scheduler
 docker compose logs -f elasticsearch
-docker compose logs -f kibana
 ----
 
 === Stop Services
@@ -102,17 +138,20 @@ docker compose down -v
 # List running containers
 docker compose ps
 
+# Check mail-mcp health
+curl http://localhost:58080/health
+
 # Check Elasticsearch health
-curl http://localhost:9200/_cluster/health
+curl http://localhost:59200/_cluster/health
 
 # View cluster info
-curl http://localhost:9200/
+curl http://localhost:59200/
 
-# Check Kibana status
-curl http://localhost:5601/api/status
+# Check Kibana status (if running)
+curl http://localhost:55601/api/status
 
 # Open Kibana in browser
-open http://localhost:5601
+open http://localhost:55601
 ----
 
 == Configuration
@@ -165,7 +204,7 @@ Kibana provides a web-based interface for exploring your indexed email data.
 
 After starting Kibana and indexing some data:
 
-1. **Access Kibana**: Open http://localhost:5601 in your browser
+1. **Access Kibana**: Open http://localhost:55601 in your browser
 2. **Create Data View**:
    * Navigate to Management → Stack Management → Data Views
    * Click "Create data view"
@@ -257,15 +296,15 @@ GET maven-dev/_search
 docker compose up -d elasticsearch kibana
 
 # Wait for services to be ready
-curl --retry 10 --retry-delay 2 http://localhost:9200/_cluster/health
-curl --retry 10 --retry-delay 2 http://localhost:5601/api/status
+curl --retry 10 --retry-delay 2 http://localhost:59200/_cluster/health
+curl --retry 10 --retry-delay 2 http://localhost:55601/api/status
 
 # Work with the application
 poetry shell
 python -m mail_mcp.storage.elasticsearch  # Example
 
 # Open Kibana for data exploration
-open http://localhost:5601
+open http://localhost:55601
 
 # When done
 docker compose down

@@ -24,50 +24,59 @@ The Maven Mail MCP Server provides AI assistants with access to Apache Maven mai
 
 == Prerequisites
 
-* Python 3.11+
-* Poetry (dependency management)
-* Elasticsearch 8.11+ (running and accessible)
-* Indexed mailing list data (see xref:data-management.adoc[Data Management])
-* Claude Desktop or other MCP-compatible client
+* Docker Desktop (or Podman) with Docker Compose V2
+* Claude Code or Claude Desktop (MCP client)
 
-== Installation
+== Quick Start
 
-=== 1. Install Dependencies
+=== 1. Start All Services
 
 [source,bash]
 ----
-poetry install
+docker compose up -d
 ----
 
-=== 2. Start Elasticsearch
+This starts:
+
+* Elasticsearch for storing and searching emails
+* Mail MCP server (HTTP/SSE on port 58080)
+* Scheduler for automatic hourly updates
+
+=== 2. Initial Data Retrieval
+
+Before using the MCP, retrieve the mailing list archives:
 
 [source,bash]
 ----
-docker compose up -d elasticsearch
+# Retrieve all dev mailing list archives (2002-present, ~700MB)
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} || true
+  done
+done
+
+# Index all downloaded mbox files
+docker compose exec scheduler index-mbox --directory /app/data/dev/
 ----
 
-Wait for Elasticsearch to be healthy:
+TIP: This initial retrieval takes time but only needs to be done once.
+The scheduler container automatically updates the current month's archive hourly.
+
+=== 3. Verify Services
 
 [source,bash]
 ----
-curl http://localhost:9200/_cluster/health
+# Check services are running
+docker compose ps
+
+# Check mail-mcp health
+curl http://localhost:58080/health
+
+# Check Elasticsearch has data
+curl http://localhost:59200/maven-dev/_count
 ----
 
-=== 3. Index Mailing List Data
-
-Before using the MCP server, you need to index email data:
-
-[source,bash]
-----
-# Download and index recent archives
-poetry run retrieve-mbox --date 2024-12
-poetry run index-mbox data/dev/2024-12.mbox
-
-# Or index entire directory
-poetry run index-mbox --directory data/dev/
-----
-
-See xref:data-management.adoc[Data Management] for details.
+See xref:data-management.adoc[Data Management] for additional data management options.
 
 == Configuration
 
@@ -78,7 +87,7 @@ Configure the server using environment variables or `.env` file:
 [source,bash]
 ----
 # Elasticsearch connection
-MAIL_MCP_ELASTICSEARCH_URL=http://localhost:9200
+MAIL_MCP_ELASTICSEARCH_URL=http://localhost:59200
 MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
 
 # Archive URL resolution (default: true)
@@ -90,9 +99,20 @@ MAIL_MCP_RESOLVE_ARCHIVE_URLS=true
 MAIL_MCP_LOG_LEVEL=INFO
 ----
 
+=== Claude Code Configuration
+
+The MCP server runs as a persistent Docker service and is accessed via SSE (Server-Sent Events).
+
+[source,bash]
+----
+claude mcp add maven-mail --transport sse http://localhost:58080/sse
+----
+
+NOTE: Ensure the mail-mcp Docker services are running (`docker compose up -d`) before starting Claude Code.
+
 === Claude Desktop Configuration
 
-To use with Claude Desktop, add to your Claude Desktop configuration file:
+To use with Claude Desktop, add to your configuration file:
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
@@ -103,23 +123,14 @@ To use with Claude Desktop, add to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "maven-mail": {
-      "command": "poetry",
-      "args": ["run", "maven-mail-mcp"],
-      "cwd": "/path/to/maven-support-and-care/maven-mcps/mail-mcp",
-      "env": {
-        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
-        "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
-        "MAIL_MCP_RESOLVE_ARCHIVE_URLS": "true",
-        "MAIL_MCP_LOG_LEVEL": "INFO"
-      }
+      "transport": "sse",
+      "url": "http://localhost:58080/sse"
     }
   }
 }
 ----
 
-**Important**: Update the `cwd` path to match your local installation.
-
-After updating the configuration, restart Claude Desktop.
+NOTE: Ensure the mail-mcp Docker services are running (`docker compose up -d`) before starting Claude Desktop.
 
 == Available Tools
 
@@ -292,18 +303,27 @@ See xref:development:adr/0003-archive-url-resolution.adoc[ADR-0003] for technica
 
 == Troubleshooting
 
-=== Server Won't Start
+=== Server Won't Connect
 
-Check logs in Claude Desktop:
+Check that Docker services are running:
 
-* **macOS**: `~/Library/Logs/Claude/mcp*.log`
-* **Windows**: `%APPDATA%\Claude\logs\mcp*.log`
+[source,bash]
+----
+# Check service status
+docker compose ps
+
+# Check mail-mcp logs
+docker compose logs mail-mcp
+
+# Check health endpoint
+curl http://localhost:58080/health
+----
 
 Common issues:
 
-1. **Elasticsearch not running**: Start with `docker compose up -d elasticsearch`
-2. **Wrong path in config**: Verify `cwd` path in Claude Desktop config
-3. **Poetry not in PATH**: Use full path to poetry in `command` field
+1. **Docker services not running**: Start with `docker compose up -d`
+2. **Port conflict**: Ensure port 58080 is not in use by another application
+3. **Elasticsearch not healthy**: Wait for Elasticsearch to fully start
 
 === No Results Found
 
@@ -311,7 +331,7 @@ Common issues:
 +
 [source,bash]
 ----
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 ----
 
 2. **Verify index name**: Default is `maven-dev` for dev@maven.apache.org
@@ -320,19 +340,31 @@ curl http://localhost:9200/maven-dev/_count
 +
 [source,bash]
 ----
-poetry run index-mbox --directory data/dev/
+docker compose exec scheduler index-mbox --directory /app/data/dev/
 ----
 
 === Connection Errors
 
-1. **Verify Elasticsearch is accessible**:
+1. **Verify all services are running**:
 +
 [source,bash]
 ----
-curl http://localhost:9200/_cluster/health
+docker compose ps
 ----
 
-2. **Check environment variables** in Claude Desktop config
+2. **Verify Elasticsearch is accessible**:
++
+[source,bash]
+----
+curl http://localhost:59200/_cluster/health
+----
+
+3. **Check mail-mcp logs for errors**:
++
+[source,bash]
+----
+docker compose logs --tail=50 mail-mcp
+----
 
 == Performance Considerations
 

@@ -25,8 +25,8 @@ It provides tools to retrieve and process historical email discussions from Mave
 
 == Status
 
-*Early Development* - Data retrieval and parsing infrastructure implemented.
-MCP server implementation in progress.
+*Functional* - MCP server implemented with HTTP/SSE transport on port 58080.
+All core tools (search, get_message, get_thread, find_references) available.
 
 == Quick Start
 
@@ -45,7 +45,7 @@ Running Elasticsearch and related services with Docker Compose.
 === Using the MCP Server
 
 xref:usage:mcp-server.adoc[MCP Server Guide]::
-Setting up and using the MCP server with Claude Desktop.
+Setting up and using the MCP server with Claude Code and Claude Desktop.
 
 xref:usage:data-management.adoc[Data Management]::
 Working with mbox files, downloading archives, and indexing.

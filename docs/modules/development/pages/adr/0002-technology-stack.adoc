@@ -249,7 +249,7 @@ Environment variables:: Support for Docker/K8s deployment
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    elasticsearch_url: str = "http://localhost:9200"
+    elasticsearch_url: str = "http://localhost:59200"
     elasticsearch_index_prefix: str = "maven"
     data_path: str = "./data"
     mbox_cache_enabled: bool = True

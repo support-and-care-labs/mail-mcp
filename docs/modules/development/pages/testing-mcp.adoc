@@ -22,41 +22,66 @@ ifndef::env-site[:toclevels: 2]
 
 Before testing, ensure:
 
-1. **Elasticsearch is running**:
+1. **Start Docker services**:
 +
 [source,bash]
 ----
-docker compose up -d elasticsearch
-# Wait for it to be healthy
-curl http://localhost:9200/_cluster/health
+docker compose up -d
+# Wait for services to be healthy
+curl http://localhost:59200/_cluster/health
+curl http://localhost:58080/health
 ----
 
 2. **Some data is indexed** (at least one mbox file):
 +
 [source,bash]
 ----
-# Download and index a recent month
-poetry run retrieve-mbox --date 2024-12
-poetry run index-mbox data/dev/2024-12.mbox
+# Download and index a recent month via Docker
+docker compose exec scheduler retrieve-mbox --date 2024-12
+docker compose exec scheduler index-mbox /app/data/dev/2024-12.mbox
 ----
 
 3. **Verify data is indexed**:
 +
 [source,bash]
 ----
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 # Should show: {"count": <some number>, ...}
 ----
 
-== Option 1: MCP Inspector (Recommended)
+== Option 1: HTTP/SSE with Docker (Production-like)
 
-The official MCP Inspector provides a web UI for testing MCP servers interactively.
+Test the MCP server via HTTP/SSE transport, the same way MCP clients connect in production:
+
+[source,bash]
+----
+# Start all services
+docker compose up -d
+
+# Check health
+curl http://localhost:58080/health
+
+# Get server info
+curl http://localhost:58080/info
+----
+
+NOTE: For full MCP protocol testing (tool calls via SSE), use an MCP client like Claude Code:
+
+[source,bash]
+----
+claude mcp add maven-mail --transport sse http://localhost:58080/sse
+----
+
+== Option 2: MCP Inspector (Development)
+
+The official MCP Inspector provides a web UI for testing MCP servers via stdio transport.
+This is useful for development when running the server directly without Docker.
 
 === Installation and Launch
 
 [source,bash]
 ----
-# From the mail-mcp directory
+# From the mail-mcp directory (requires local Python/Poetry)
 npx @modelcontextprotocol/inspector poetry run maven-mail-mcp
 ----
 
@@ -224,7 +249,7 @@ Once you have data indexed, you can test with Claude Desktop:
       "args": ["run", "maven-mail-mcp"],
       "cwd": "/Users/ascheman/wrk/maven/maven-support-and-care/maven-mcps/mail-mcp",
       "env": {
-        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:9200",
+        "MAIL_MCP_ELASTICSEARCH_URL": "http://localhost:59200",
         "MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX": "maven",
         "MAIL_MCP_LOG_LEVEL": "DEBUG"
       }
@@ -253,10 +278,10 @@ Test that your data is properly indexed and searchable:
 [source,bash]
 ----
 # Count indexed emails
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 
 # Search for a term
-curl -X POST http://localhost:9200/maven-dev/_search \
+curl -X POST http://localhost:59200/maven-dev/_search \
   -H 'Content-Type: application/json' \
   -d '{
     "query": {
@@ -268,7 +293,7 @@ curl -X POST http://localhost:9200/maven-dev/_search \
   }'
 
 # Find emails with JIRA references
-curl -X POST http://localhost:9200/maven-dev/_search \
+curl -X POST http://localhost:59200/maven-dev/_search \
   -H 'Content-Type: application/json' \
   -d '{
     "query": {
@@ -280,7 +305,7 @@ curl -X POST http://localhost:9200/maven-dev/_search \
   }'
 
 # Get a specific message
-curl http://localhost:9200/maven-dev/_doc/<message-id>
+curl http://localhost:59200/maven-dev/_doc/<message-id>
 ----
 
 == Troubleshooting
@@ -292,13 +317,13 @@ Check index status:
 [source,bash]
 ----
 # List all indices
-curl http://localhost:9200/_cat/indices?v
+curl http://localhost:59200/_cat/indices?v
 
 # Check specific index
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 
 # View sample documents
-curl -X POST http://localhost:9200/maven-dev/_search \
+curl -X POST http://localhost:59200/maven-dev/_search \
   -H 'Content-Type: application/json' \
   -d '{"size": 1}'
 ----
@@ -343,7 +368,7 @@ If you get connection errors:
 [source,bash]
 ----
 docker compose ps
-curl http://localhost:9200/_cluster/health
+curl http://localhost:59200/_cluster/health
 ----
 
 2. **Check environment variables**:
@@ -400,7 +425,7 @@ poetry run retrieve-mbox --date 2024-12
 poetry run index-mbox data/dev/2024-12.mbox
 
 # Verify
-curl http://localhost:9200/maven-dev/_count
+curl http://localhost:59200/maven-dev/_count
 ----
 
 This should give you enough emails to test all features.

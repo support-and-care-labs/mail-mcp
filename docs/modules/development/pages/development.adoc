@@ -231,10 +231,10 @@ See xref:usage:docker.adoc[Docker Setup] for running Elasticsearch locally.
 docker compose up -d elasticsearch
 
 # Check health
-curl http://localhost:9200/_cluster/health
+curl http://localhost:59200/_cluster/health
 
 # View indices
-curl http://localhost:9200/_cat/indices?v
+curl http://localhost:59200/_cat/indices?v
 
 # Stop Elasticsearch
 docker compose down
@@ -275,7 +275,7 @@ Configuration is managed via environment variables or `.env` file.
 [source,bash]
 ----
 # Elasticsearch
-MAIL_MCP_ELASTICSEARCH_URL=http://localhost:9200
+MAIL_MCP_ELASTICSEARCH_URL=http://localhost:59200
 MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
 
 # Data paths
@@ -359,10 +359,10 @@ MAIL_MCP_LOG_LEVEL=DEBUG poetry run retrieve-mbox --date 2024-10
 [source,bash]
 ----
 # Get a specific document
-curl http://localhost:9200/maven-dev/_doc/<message-id>
+curl http://localhost:59200/maven-dev/_doc/<message-id>
 
 # Search
-curl -X POST http://localhost:9200/maven-dev/_search \
+curl -X POST http://localhost:59200/maven-dev/_search \
   -H 'Content-Type: application/json' \
   -d '{"query": {"match": {"subject": "release"}}}'
 ----

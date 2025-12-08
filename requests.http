@@ -17,10 +17,10 @@
 ### HTTP Client Requests for mail-mcp
 ###
 ### MCP Server API (HTTP/SSE transport)
-@mcpServerUrl = http://localhost:8080
+@mcpServerUrl = http://localhost:58080
 
 ### Elasticsearch API
-@elasticsearchUrl = http://localhost:9200
+@elasticsearchUrl = http://localhost:59200
 
 ##################################################
 ### MCP Server HTTP Endpoints

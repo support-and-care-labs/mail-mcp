@@ -49,7 +49,7 @@ docker:
 
 # Run Docker image locally
 docker-run:
-	docker run --rm -it -p 8080:8080 mail-mcp:local
+	docker run --rm -it -p 58080:8080 mail-mcp:local
 
 # Clean build artifacts
 clean:

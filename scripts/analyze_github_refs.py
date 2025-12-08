@@ -36,7 +36,7 @@ Examples:
     poetry run python scripts/analyze_github_refs.py --days 30
 
     # Use custom Elasticsearch URL
-    poetry run python scripts/analyze_github_refs.py --es-url http://localhost:9200
+    poetry run python scripts/analyze_github_refs.py --es-url http://localhost:59200
 """
 
 import argparse
@@ -61,8 +61,8 @@ def parse_args():
     )
     parser.add_argument(
         "--es-url",
-        default="http://localhost:9200",
-        help="Elasticsearch URL (default: http://localhost:9200)",
+        default="http://localhost:59200",
+        help="Elasticsearch URL (default: http://localhost:59200)",
     )
     parser.add_argument(
         "--index",
