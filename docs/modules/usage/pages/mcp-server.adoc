@@ -366,6 +366,24 @@ curl http://localhost:59200/_cluster/health
 docker compose logs --tail=50 mail-mcp
 ----
 
+=== Session Errors After Server Restart
+
+If you receive HTTP 404 errors with message "Invalid or expired session ID" after restarting the server (e.g., `docker compose restart mail-mcp`), this is expected behavior.
+
+**Cause**: The Streamable HTTP transport uses in-memory session tracking.
+When the server restarts, all session state is lost.
+Clients that send a stale `mcp-session-id` header will receive a 404 error.
+
+**Solution**: MCP clients should handle 404 responses by re-initializing their session:
+
+. Detect the 404 "Invalid or expired session ID" response
+. Discard the stale session ID
+. Send a new `initialize` request without the `mcp-session-id` header
+. Continue with the new session
+
+NOTE: This is standard MCP protocol behavior.
+Well-implemented clients should automatically recover from session loss.
+
 == Performance Considerations
 
 * **Batch size**: Default 100 documents per batch for indexing

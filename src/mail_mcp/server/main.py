@@ -69,6 +69,8 @@ def run_server():
         # streamable_http_app() includes them and handles /mcp endpoint
         import uvicorn
 
+        from mail_mcp.server.middleware import StaleSessionMiddleware
+
         logger.info(
             "starting_http_server",
             host=args.host,
@@ -77,6 +79,9 @@ def run_server():
 
         # Get the app with proper lifespan handling for task group initialization
         app = server.streamable_http_app()
+
+        # Add middleware to transform stale session errors from 400 to 404
+        app.add_middleware(StaleSessionMiddleware)
 
         uvicorn.run(
             app,

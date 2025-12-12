@@ -33,8 +33,13 @@ def mcp_server():
 
 @pytest.fixture
 def mcp_app(mcp_server):
-    """Get the MCP ASGI app for testing."""
-    return mcp_server.streamable_http_app()
+    """Get the MCP ASGI app for testing with middleware."""
+    from mail_mcp.server.middleware import StaleSessionMiddleware
+
+    app = mcp_server.streamable_http_app()
+    # Add middleware to transform stale session errors from 400 to 404
+    app.add_middleware(StaleSessionMiddleware)
+    return app
 
 
 @pytest.fixture
@@ -216,6 +221,40 @@ class TestMcpEndpoint:
                     assert "get_message" in tool_names
                     assert "get_thread" in tool_names
                     break
+
+
+class TestSessionHandling:
+    """Tests for MCP session handling."""
+
+    @pytest.mark.asyncio
+    async def test_stale_session_returns_404(self, async_client):
+        """Test that a stale/invalid session ID returns 404 Not Found.
+
+        This verifies the expected behavior after server restart:
+        clients sending old session IDs should receive 404,
+        prompting them to re-initialize their session.
+
+        The StaleSessionMiddleware transforms the MCP SDK's default 400 response
+        to 404 "Invalid or expired session ID" for better client handling.
+        """
+        response = await async_client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {}
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+                "mcp-session-id": "stale-session-id-after-restart"
+            }
+        )
+
+        # Our middleware transforms SDK's 400 to 404 for stale sessions
+        assert response.status_code == 404
+        assert "Invalid or expired session ID" in response.text
 
 
 class TestTransportInitialization:
