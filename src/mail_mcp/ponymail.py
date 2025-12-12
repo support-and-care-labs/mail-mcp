@@ -104,10 +104,13 @@ async def lookup_mid_by_search(
         # Use first few significant words from subject
         # Remove common prefixes like Re:, [VOTE], etc.
         clean_subject = subject
-        for prefix in ["Re:", "RE:", "Fwd:", "FWD:", "[VOTE]", "[RESULT]", "[ANN]", "[DISCUSS]"]:
+        for prefix in [
+            "Re:", "RE:", "Fwd:", "FWD:",
+            "[VOTE]", "[RESULT]", "[ANN]", "[DISCUSS]", "[HEADS UP]"
+        ]:
             clean_subject = clean_subject.replace(prefix, "")
-        # Take first 5 words
-        words = clean_subject.split()[:5]
+        # Take first 5 alphanumeric words (filter out symbols like +, -)
+        words = [w for w in clean_subject.split() if w.isalnum() or len(w) > 1][:5]
         if words:
             params["q"] = " ".join(words)
 

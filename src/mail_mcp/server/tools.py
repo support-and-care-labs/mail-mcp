@@ -258,8 +258,8 @@ async def search_emails(
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
-        # Archive URL (if cached)
-        archive_url = format_archive_url(source)
+        # Archive URL (resolve on-demand if not cached)
+        archive_url = await resolve_archive_url(source, list_name, client)
         if archive_url:
             output.append(f"Archive: {archive_url}")
 
@@ -581,8 +581,8 @@ async def search_by_contributor(
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
-        # Archive URL (if cached)
-        archive_url = format_archive_url(source)
+        # Archive URL (resolve on-demand if not cached)
+        archive_url = await resolve_archive_url(source, list_name, client)
         if archive_url:
             output.append(f"Archive: {archive_url}")
 
@@ -671,8 +671,8 @@ async def find_references(
         output.append(f"Date: {source.get('date', 'N/A')}")
         output.append(f"Message-ID: {source.get('message_id', 'N/A')}")
 
-        # Archive URL (if cached)
-        archive_url = format_archive_url(source)
+        # Archive URL (resolve on-demand if not cached)
+        archive_url = await resolve_archive_url(source, list_name, client)
         if archive_url:
             output.append(f"Archive: {archive_url}")
 
