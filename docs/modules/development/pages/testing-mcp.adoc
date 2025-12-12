@@ -49,9 +49,9 @@ curl http://localhost:59200/maven-dev/_count
 # Should show: {"count": <some number>, ...}
 ----
 
-== Option 1: HTTP/SSE with Docker (Production-like)
+== Option 1: Streamable HTTP with Docker (Production-like)
 
-Test the MCP server via HTTP/SSE transport, the same way MCP clients connect in production:
+Test the MCP server via Streamable HTTP transport, the same way MCP clients connect in production:
 
 [source,bash]
 ----
@@ -65,11 +65,11 @@ curl http://localhost:58080/health
 curl http://localhost:58080/info
 ----
 
-NOTE: For full MCP protocol testing (tool calls via SSE), use an MCP client like Claude Code:
+NOTE: For full MCP protocol testing (tool calls via Streamable HTTP), use an MCP client like Claude Code:
 
 [source,bash]
 ----
-claude mcp add maven-mail --transport sse http://localhost:58080/sse
+claude mcp add maven-mail --transport http http://localhost:58080/mcp
 ----
 
 == Option 2: MCP Inspector (Development)

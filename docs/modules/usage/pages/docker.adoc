@@ -57,11 +57,11 @@ Features::
 
 === mail-mcp
 
-MCP server application providing HTTP/SSE transport.
+MCP server application providing Streamable HTTP transport.
 
 Image:: Built from local Dockerfile
-Ports:: 58080 (HTTP/SSE)
-Access:: http://localhost:58080/sse (for MCP clients)
+Ports:: 58080 (Streamable HTTP)
+Access:: http://localhost:58080/mcp (for MCP clients)
 Health check:: http://localhost:58080/health
 
 === scheduler
@@ -74,13 +74,13 @@ Function:: Retrieves and re-indexes latest emails automatically
 
 == Connecting MCP Clients
 
-Once services are running, configure your MCP client to connect via SSE:
+Once services are running, configure your MCP client to connect via Streamable HTTP:
 
 === Claude Code
 
 [source,bash]
 ----
-claude mcp add maven-mail --transport sse http://localhost:58080/sse
+claude mcp add maven-mail --transport http http://localhost:58080/mcp
 ----
 
 === Claude Desktop
@@ -92,8 +92,8 @@ Add to your configuration file (`~/Library/Application Support/Claude/claude_des
 {
   "mcpServers": {
     "maven-mail": {
-      "transport": "sse",
-      "url": "http://localhost:58080/sse"
+      "type": "streamable-http",
+      "url": "http://localhost:58080/mcp"
     }
   }
 }

@@ -20,6 +20,8 @@
 
 import structlog
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 import mail_mcp.logging_config  # noqa: F401
 from mail_mcp.config import settings
@@ -71,6 +73,32 @@ def create_server() -> FastMCP:
     mcp.add_tool(get_message)
     mcp.add_tool(get_thread)
     mcp.add_tool(find_references)
+
+    # Register custom HTTP endpoints (included in streamable_http_app)
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health_check(request: Request) -> Response:
+        """Health check endpoint for container orchestration."""
+        return JSONResponse({
+            "status": "healthy",
+            "service": "maven-mail-mcp",
+            "elasticsearch_url": settings.elasticsearch_url
+        })
+
+    @mcp.custom_route("/info", methods=["GET"])
+    async def server_info_route(request: Request) -> Response:
+        """Get MCP server information and capabilities."""
+        return JSONResponse({
+            "name": "maven-mail-mcp",
+            "version": "1.0.0",
+            "tools": [
+                {"name": "search_emails", "description": "Search archives"},
+                {"name": "search_by_contributor", "description": "Find by contributor"},
+                {"name": "get_message", "description": "Get message by ID"},
+                {"name": "get_thread", "description": "Get email thread"},
+                {"name": "find_references", "description": "Find JIRA/GitHub refs"}
+            ],
+            "note": "For full MCP protocol support, use /mcp endpoint with an MCP client"
+        })
 
     logger.info(
         "mcp_server_created",

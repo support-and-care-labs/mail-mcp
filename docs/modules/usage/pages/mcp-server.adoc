@@ -39,7 +39,7 @@ docker compose up -d
 This starts:
 
 * Elasticsearch for storing and searching emails
-* Mail MCP server (HTTP/SSE on port 58080)
+* Mail MCP server (Streamable HTTP on port 58080)
 * Scheduler for automatic hourly updates
 
 === 2. Initial Data Retrieval
@@ -101,11 +101,11 @@ MAIL_MCP_LOG_LEVEL=INFO
 
 === Claude Code Configuration
 
-The MCP server runs as a persistent Docker service and is accessed via SSE (Server-Sent Events).
+The MCP server runs as a persistent Docker service and is accessed via Streamable HTTP transport.
 
 [source,bash]
 ----
-claude mcp add maven-mail --transport sse http://localhost:58080/sse
+claude mcp add maven-mail --transport http http://localhost:58080/mcp
 ----
 
 NOTE: Ensure the mail-mcp Docker services are running (`docker compose up -d`) before starting Claude Code.
@@ -123,8 +123,8 @@ To use with Claude Desktop, add to your configuration file:
 {
   "mcpServers": {
     "maven-mail": {
-      "transport": "sse",
-      "url": "http://localhost:58080/sse"
+      "type": "streamable-http",
+      "url": "http://localhost:58080/mcp"
     }
   }
 }

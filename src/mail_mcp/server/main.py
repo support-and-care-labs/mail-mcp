@@ -16,11 +16,11 @@
 
 """Main entry point for Maven MCP server."""
 
-# MUST import logging_config FIRST to configure stderr output
 import argparse
 
 import structlog
 
+# MUST import logging_config FIRST to configure stderr output
 import mail_mcp.logging_config  # noqa: F401
 from mail_mcp.config import settings
 from mail_mcp.server.server import server
@@ -64,52 +64,20 @@ def run_server():
         # FastMCP handles stdio transport automatically
         server.run()
     else:
-        # HTTP transport using SSE (Server-Sent Events)
+        # HTTP transport using Streamable HTTP (MCP 2025-03-26 spec)
+        # Custom routes (/health, /info) are registered via @server.custom_route in server.py
+        # streamable_http_app() includes them and handles /mcp endpoint
         import uvicorn
-        from starlette.applications import Starlette
-        from starlette.responses import JSONResponse
-        from starlette.routing import Mount, Route
-
-        # Create health endpoint
-        async def health_check(request):
-            """Health check endpoint for container orchestration."""
-            return JSONResponse({
-                "status": "healthy",
-                "service": "maven-mail-mcp",
-                "elasticsearch_url": settings.elasticsearch_url
-            })
-
-        # Get MCP server info endpoint
-        async def server_info(request):
-            """Get MCP server information and capabilities."""
-            return JSONResponse({
-                "name": "maven-mail-mcp",
-                "version": "1.0.0",
-                "tools": [
-                    {"name": "search_emails", "description": "Search archives"},
-                    {"name": "search_by_contributor", "description": "Find by contributor"},
-                    {"name": "get_message", "description": "Get message by ID"},
-                    {"name": "get_thread", "description": "Get email thread"},
-                    {"name": "find_references", "description": "Find JIRA/GitHub refs"}
-                ],
-                "note": "For full MCP protocol support, use /sse endpoint with an MCP client"
-            })
-
-        # Mount FastMCP SSE app under root, add other endpoints
-        app = Starlette(
-            routes=[
-                Route("/health", health_check),
-                Route("/info", server_info),
-                Mount("/", app=server.sse_app()),
-            ]
-        )
 
         logger.info(
             "starting_http_server",
             host=args.host,
             port=args.port
         )
-        # Run combined app via uvicorn
+
+        # Get the app with proper lifespan handling for task group initialization
+        app = server.streamable_http_app()
+
         uvicorn.run(
             app,
             host=args.host,

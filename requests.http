@@ -16,7 +16,7 @@
 
 ### HTTP Client Requests for mail-mcp
 ###
-### MCP Server API (HTTP/SSE transport)
+### MCP Server API (Streamable HTTP transport)
 @mcpServerUrl = http://localhost:58080
 
 ### Elasticsearch API
