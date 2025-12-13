@@ -474,7 +474,7 @@ The MCP will expose tools such as:
 == References
 
 * https://lists.apache.org/[Apache Mailing List Archives]
-* https://github.com/apache/infrastructure-ponymail-foal[Apache Ponymail Foal]
+* https://github.com/apache/incubator-ponymail-foal[Apache Ponymail Foal]
 * https://www.elastic.co/elasticsearch/[Elasticsearch]
 * https://neo4j.com/[Neo4j Graph Database]
 * https://www.rfc-editor.org/rfc/rfc5322.html[RFC 5322: Internet Message Format]

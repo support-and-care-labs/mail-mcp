@@ -183,6 +183,5 @@ Trigger for migration::
 
 == References
 
-* https://lists.apache.org/api/[Apache Pony Mail API]
-* https://github.com/apache/incubator-ponymail-foal[Apache Pony Mail Foal]
 * https://ponymail.apache.org/docs/api.html[Pony Mail API Documentation]
+* https://github.com/apache/incubator-ponymail-foal[Apache Pony Mail Foal]
