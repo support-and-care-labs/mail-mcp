@@ -273,7 +273,13 @@ class EmailParser:
         message_id = message.get("Message-ID", "").strip()
         if not message_id:
             # Generate a placeholder ID if missing
-            message_id = f"<no-message-id-{hash(message.as_string())}>"
+            try:
+                msg_str = message.as_string()
+            except Exception:
+                # Fallback for malformed messages that can't be converted to string
+                # (e.g., broken Header objects, non-ASCII encoding issues)
+                msg_str = str(message.get("Subject", "")) + str(message.get("Date", ""))
+            message_id = f"<no-message-id-{hash(msg_str)}>"
             logger.warning("missing_message_id", generated_id=message_id)
 
         # Extract In-Reply-To
