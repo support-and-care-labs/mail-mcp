@@ -14,7 +14,13 @@
 # limitations under the License.
 #
 
-# Docker Compose configuration for mail-mcp development
+# Docker Compose configuration for mail-mcp
+#
+# Quick Start:
+#   mkdir -p data && docker compose up -d
+#
+# For development (build from source):
+#   docker compose build && docker compose up -d
 
 services:
   # Elasticsearch for storing and searching email data
@@ -64,6 +70,7 @@ services:
 
   # mail-mcp MCP server
   mail-mcp:
+    image: ghcr.io/support-and-care-labs/mail-mcp:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -100,6 +107,7 @@ services:
   # Scheduler for periodic mbox updates
   # Runs hourly to fetch the current month's mbox and re-index into Elasticsearch
   scheduler:
+    image: ghcr.io/support-and-care-labs/mail-mcp:latest
     build:
       context: .
       dockerfile: Dockerfile

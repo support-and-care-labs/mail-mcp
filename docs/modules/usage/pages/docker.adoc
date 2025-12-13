@@ -21,7 +21,35 @@ ifndef::env-site[:toclevels: 2]
 == Overview
 
 The project includes Docker support for running Elasticsearch and the MCP server.
-This is the recommended way to run the infrastructure during development.
+This is the recommended way to run the infrastructure.
+
+== Quick Start
+
+Download the docker-compose.yml and start all services:
+
+[source,bash]
+----
+# Create a directory and download docker-compose.yml
+mkdir mail-mcp && cd mail-mcp
+curl -O https://raw.githubusercontent.com/support-and-care-labs/mail-mcp/main/docker-compose.yml
+
+# Create data directory
+mkdir -p data
+
+# Start all services
+docker compose up -d
+
+# Wait for services to be healthy
+docker compose ps
+
+# Check MCP server health
+curl http://localhost:58080/health
+----
+
+[TIP]
+====
+The docker-compose.yml is also available for download: link:{attachmentsdir}/docker-compose.yml[docker-compose.yml^]
+====
 
 == Prerequisites
 
@@ -59,7 +87,8 @@ Features::
 
 MCP server application providing Streamable HTTP transport.
 
-Image:: Built from local Dockerfile
+Image:: `ghcr.io/support-and-care-labs/mail-mcp:latest`
+Platforms:: linux/amd64, linux/arm64
 Ports:: 58080 (Streamable HTTP)
 Access:: http://localhost:58080/mcp (for MCP clients)
 Health check:: http://localhost:58080/health
@@ -68,9 +97,20 @@ Health check:: http://localhost:58080/health
 
 Background service for automatic mbox updates.
 
-Image:: Built from local Dockerfile
+Image:: `ghcr.io/support-and-care-labs/mail-mcp:latest`
+Platforms:: linux/amd64, linux/arm64
 Schedule:: Hourly updates of current month's mbox
 Function:: Retrieves and re-indexes latest emails automatically
+
+== Docker Compose File
+
+The complete `docker-compose.yml` for running all services:
+
+.docker-compose.yml
+[source,yaml]
+----
+include::example$docker-compose.yml[]
+----
 
 == Connecting MCP Clients
 
