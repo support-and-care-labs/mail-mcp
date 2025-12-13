@@ -18,8 +18,8 @@
 """
 Retrieve an mbox file from Apache mailing list server by month.
 
-Usage: retrieve-mbox --date <yyyy-mm> [--list <list@domain>]
-Stores the file as <yyyy-mm>.mbox in the current directory.
+Usage: retrieve-mbox --date <yyyy-mm> [--list <list@domain>] [--output-dir <path>]
+Stores the file as <yyyy-mm>.mbox in the specified directory (default: current).
 """
 
 import argparse
@@ -162,6 +162,12 @@ def main() -> None:
         metavar="list@domain",
         help=f"Apache mailing list address (default: {DEFAULT_MAILING_LIST})"
     )
+    parser.add_argument(
+        "--output-dir",
+        default=".",
+        metavar="PATH",
+        help="Output directory for mbox file (default: current directory)"
+    )
 
     args = parser.parse_args()
 
@@ -174,13 +180,17 @@ def main() -> None:
         parser.print_help(sys.stderr)
         sys.exit(2)
 
+    # Ensure output directory exists
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # Download mbox file
     output_filename = f"{args.date}.mbox"
-    output_path = Path(output_filename)
+    output_path = output_dir / output_filename
 
     download_mbox(args.list, args.date, output_path)
 
-    print(f"Saved to {output_filename}")
+    print(f"Saved to {output_path}")
 
 
 if __name__ == "__main__":
