@@ -21,7 +21,13 @@ Update the current month's mbox file and re-index it.
 This script is designed to be run periodically (e.g., hourly via cron) to keep
 the mailing list archive up-to-date with the latest emails.
 
-Usage: update-current-month [--list <list@domain>] [--data-dir <path>]
+Usage:
+    update-current-month [--list <list@domain>] [--data-dir <path>]
+    update-current-month --all  # Update all configured lists
+
+Environment variables:
+    MAIL_MCP_MAILING_LISTS: Comma-separated list of mailing lists to update
+                           (default: dev@maven.apache.org)
 """
 
 import argparse
@@ -219,6 +225,50 @@ def get_list_subdir(list_addr: str) -> str:
     return list_addr.split("@")[0] if "@" in list_addr else list_addr
 
 
+def get_configured_lists() -> list[str]:
+    """
+    Get list of mailing lists from configuration.
+
+    Returns:
+        List of mailing list addresses
+    """
+    lists_str = settings.mailing_lists
+    return [lst.strip() for lst in lists_str.split(",") if lst.strip()]
+
+
+async def update_all_lists(data_dir: Path) -> int:
+    """
+    Update all configured mailing lists.
+
+    Args:
+        data_dir: Base data directory
+
+    Returns:
+        Exit code (0 if all succeeded, 1 if any failed)
+    """
+    lists = get_configured_lists()
+    logger.info("updating_all_lists", lists=lists, count=len(lists))
+
+    failed = 0
+    for list_addr in lists:
+        list_subdir = get_list_subdir(list_addr)
+        logger.info("updating_list", list=list_addr)
+
+        result = await update_current_month_async(list_addr, data_dir, list_subdir)
+        if result != 0:
+            failed += 1
+            logger.error("list_update_failed", list=list_addr)
+
+    logger.info(
+        "all_lists_update_complete",
+        total=len(lists),
+        succeeded=len(lists) - failed,
+        failed=failed
+    )
+
+    return 1 if failed > 0 else 0
+
+
 def main() -> None:
     """Main entry point for update-current-month command."""
     parser = argparse.ArgumentParser(
@@ -227,9 +277,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--list",
-        default=DEFAULT_MAILING_LIST,
+        default=None,
         metavar="list@domain",
         help=f"Apache mailing list address (default: {DEFAULT_MAILING_LIST})"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="update_all",
+        help="Update all configured mailing lists (from MAIL_MCP_MAILING_LISTS)"
     )
     parser.add_argument(
         "--data-dir",
@@ -241,11 +297,18 @@ def main() -> None:
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else settings.data_path
-    list_subdir = get_list_subdir(args.list)
 
-    exit_code = asyncio.run(
-        update_current_month_async(args.list, data_dir, list_subdir)
-    )
+    if args.update_all:
+        # Update all configured lists
+        exit_code = asyncio.run(update_all_lists(data_dir))
+    else:
+        # Update single list (default or specified)
+        list_addr = args.list if args.list else DEFAULT_MAILING_LIST
+        list_subdir = get_list_subdir(list_addr)
+        exit_code = asyncio.run(
+            update_current_month_async(list_addr, data_dir, list_subdir)
+        )
+
     sys.exit(exit_code)
 
 

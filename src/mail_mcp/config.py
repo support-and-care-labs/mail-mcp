@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     data_path: Path = Path("./data")
     mbox_cache_enabled: bool = True
 
+    # Mailing lists to index (comma-separated for env var)
+    # Example: MAIL_MCP_MAILING_LISTS=dev@maven.apache.org,users@maven.apache.org
+    mailing_lists: str = "dev@maven.apache.org"
+
     # Archive URL resolution
     # When enabled, automatically looks up Pony Mail permalink IDs (mid)
     # for messages and caches them in Elasticsearch

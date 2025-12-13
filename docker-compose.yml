@@ -108,6 +108,7 @@ services:
       - MAIL_MCP_ELASTICSEARCH_URL=http://elasticsearch:9200
       - MAIL_MCP_ELASTICSEARCH_INDEX_PREFIX=maven
       - MAIL_MCP_DATA_PATH=/app/data
+      - MAIL_MCP_MAILING_LISTS=dev@maven.apache.org,users@maven.apache.org
       - MAIL_MCP_LOG_LEVEL=INFO
       - PYTHONUNBUFFERED=1
     volumes:
