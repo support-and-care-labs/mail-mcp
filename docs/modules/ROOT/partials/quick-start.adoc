@@ -1,0 +1,74 @@
+//
+// Copyright 2025 The Apache Software Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// Partial: Quick Start for Mail MCP
+// Include with: include::mail-mcp:ROOT:partial$quick-start.adoc[]
+
+=== 1. Start All Services
+
+[source,bash]
+----
+docker compose up -d
+----
+
+This starts:
+
+* Elasticsearch for storing and searching emails
+* Mail MCP server (Streamable HTTP on port 58080)
+* Scheduler for automatic hourly updates of dev@ and users@ lists
+
+=== 2. Initial Data Retrieval
+
+Before using the MCP, retrieve the mailing list archives:
+
+[source,bash]
+----
+# Retrieve dev@ archives (July 2002-present, ~750MB)
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --output-dir /app/data/dev || true
+  done
+done
+
+# Retrieve users@ archives (Nov 2002-present, ~800MB)
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --list users@maven.apache.org --output-dir /app/data/users || true
+  done
+done
+
+# Index all downloaded mbox files
+docker compose exec scheduler index-mbox --directory /app/data/dev/ --list dev@maven.apache.org
+docker compose exec scheduler index-mbox --directory /app/data/users/ --list users@maven.apache.org
+----
+
+TIP: Initial retrieval (~1.5GB total) takes time but only needs to be done once.
+The scheduler container automatically updates both lists' archives hourly.
+
+=== 3. Verify Services
+
+[source,bash]
+----
+# Check services are running
+docker compose ps
+
+# Check mail-mcp health
+curl http://localhost:58080/health
+
+# Check Elasticsearch has data
+curl http://localhost:59200/maven-dev/_count
+curl http://localhost:59200/maven-users/_count
+----

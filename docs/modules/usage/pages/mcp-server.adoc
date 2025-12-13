@@ -24,65 +24,11 @@ The Maven Mail MCP Server provides AI assistants with access to Apache Maven mai
 
 == Prerequisites
 
-* Docker Desktop (or Podman) with Docker Compose V2
-* Claude Code or Claude Desktop (MCP client)
+include::ROOT:partial$prerequisites.adoc[]
 
 == Quick Start
 
-=== 1. Start All Services
-
-[source,bash]
-----
-docker compose up -d
-----
-
-This starts:
-
-* Elasticsearch for storing and searching emails
-* Mail MCP server (Streamable HTTP on port 58080)
-* Scheduler for automatic hourly updates
-
-=== 2. Initial Data Retrieval
-
-Before using the MCP, retrieve the mailing list archives:
-
-[source,bash]
-----
-# Retrieve dev@ archives (July 2002-present, ~750MB)
-for year in $(seq 2002 $(date +%Y)); do
-  for month in $(seq -w 1 12); do
-    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --output-dir /app/data/dev || true
-  done
-done
-
-# Retrieve users@ archives (Nov 2002-present, ~800MB)
-for year in $(seq 2002 $(date +%Y)); do
-  for month in $(seq -w 1 12); do
-    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --list users@maven.apache.org --output-dir /app/data/users || true
-  done
-done
-
-# Index all downloaded mbox files
-docker compose exec scheduler index-mbox --directory /app/data/dev/ --list dev@maven.apache.org
-docker compose exec scheduler index-mbox --directory /app/data/users/ --list users@maven.apache.org
-----
-
-TIP: Initial retrieval (~1.5GB total) takes time but only needs to be done once.
-The scheduler container automatically updates both lists' archives hourly.
-
-=== 3. Verify Services
-
-[source,bash]
-----
-# Check services are running
-docker compose ps
-
-# Check mail-mcp health
-curl http://localhost:58080/health
-
-# Check Elasticsearch has data
-curl http://localhost:59200/maven-dev/_count
-----
+include::ROOT:partial$quick-start.adoc[]
 
 See xref:data-management.adoc[Data Management] for additional data management options.
 
@@ -107,38 +53,9 @@ MAIL_MCP_RESOLVE_ARCHIVE_URLS=true
 MAIL_MCP_LOG_LEVEL=INFO
 ----
 
-=== Claude Code Configuration
+=== MCP Client Configuration
 
-The MCP server runs as a persistent Docker service and is accessed via Streamable HTTP transport.
-
-[source,bash]
-----
-claude mcp add maven-mail --transport http http://localhost:58080/mcp
-----
-
-NOTE: Ensure the mail-mcp Docker services are running (`docker compose up -d`) before starting Claude Code.
-
-=== Claude Desktop Configuration
-
-To use with Claude Desktop, add to your configuration file:
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-[source,json]
-----
-{
-  "mcpServers": {
-    "maven-mail": {
-      "type": "streamable-http",
-      "url": "http://localhost:58080/mcp"
-    }
-  }
-}
-----
-
-NOTE: Ensure the mail-mcp Docker services are running (`docker compose up -d`) before starting Claude Desktop.
+include::ROOT:partial$mcp-config.adoc[]
 
 == Available Tools
 
