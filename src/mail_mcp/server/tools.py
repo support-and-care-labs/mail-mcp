@@ -138,6 +138,51 @@ async def get_es_client() -> ElasticsearchClient:
     return _es_client
 
 
+async def list_available_lists() -> str:
+    """
+    List all available mailing lists that have been indexed.
+
+    Returns:
+        Formatted list of available mailing lists with document counts
+    """
+    logger.info("list_available_lists_called")
+
+    try:
+        client = await get_es_client()
+        indices = await client.list_indices()
+
+        if not indices:
+            return (
+                "No mailing lists are currently indexed.\n\n"
+                "To index a mailing list, use the CLI tools:\n"
+                "1. retrieve-mbox --date YYYY-MM --list <list@domain>\n"
+                "2. index-mbox --directory <path> --list <list@domain>"
+            )
+
+        output = ["Available Mailing Lists", "=" * 50, ""]
+
+        total_docs = 0
+        for idx in indices:
+            list_name = idx["list_name"]
+            doc_count = idx["doc_count"]
+            total_docs += doc_count
+            output.append(f"• {list_name}")
+            output.append(f"  Documents: {doc_count:,}")
+            output.append("")
+
+        output.append("-" * 50)
+        output.append(f"Total: {len(indices)} list(s), {total_docs:,} documents")
+        output.append("")
+        output.append("Use list_name parameter in other tools to query a specific list.")
+        output.append("Example: search_emails(query='maven 4', list_name='users@maven.apache.org')")
+
+        return "\n".join(output)
+
+    except Exception as e:
+        logger.error("list_available_lists_failed", error=str(e), exc_info=True)
+        return f"Error listing available lists: {e}"
+
+
 async def search_emails(
     query: str,
     list_name: str = "dev@maven.apache.org",

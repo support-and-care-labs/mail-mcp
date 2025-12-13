@@ -82,9 +82,10 @@ class TestCustomEndpoints:
         assert data["name"] == "maven-mail-mcp"
         assert data["version"] == "1.0.0"
         assert "tools" in data
-        assert len(data["tools"]) == 5
+        assert len(data["tools"]) == 6
 
         tool_names = [t["name"] for t in data["tools"]]
+        assert "list_available_lists" in tool_names
         assert "search_emails" in tool_names
         assert "get_message" in tool_names
         assert "get_thread" in tool_names

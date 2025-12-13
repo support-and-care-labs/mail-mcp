@@ -123,6 +123,45 @@ class ElasticsearchClient:
         index_name = get_index_name(settings.elasticsearch_index_prefix, list_name)
         return await self._client.indices.exists(index=index_name)
 
+    async def list_indices(self) -> list[dict]:
+        """
+        List all mailing list indices with document counts.
+
+        Returns:
+            List of dicts with index info: name, list_name, doc_count
+        """
+        if not self._client:
+            raise RuntimeError("Client not connected. Call connect() first.")
+
+        prefix = settings.elasticsearch_index_prefix
+        pattern = f"{prefix}-*"
+
+        # Get index stats
+        try:
+            stats = await self._client.indices.stats(index=pattern)
+        except Exception as e:
+            logger.warning("list_indices_failed", error=str(e))
+            return []
+
+        indices = []
+        for index_name, index_stats in stats.get("indices", {}).items():
+            # Extract list name from index name (e.g., "maven-dev" -> "dev")
+            if index_name.startswith(f"{prefix}-"):
+                list_part = index_name[len(prefix) + 1:]
+                # Reconstruct full list name
+                list_name = f"{list_part}@maven.apache.org"
+                doc_count = index_stats.get("primaries", {}).get("docs", {}).get("count", 0)
+
+                indices.append({
+                    "index": index_name,
+                    "list_name": list_name,
+                    "doc_count": doc_count
+                })
+
+        # Sort by list name
+        indices.sort(key=lambda x: x["list_name"])
+        return indices
+
     async def index_document(
         self,
         list_name: str,

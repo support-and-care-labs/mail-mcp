@@ -29,6 +29,7 @@ from mail_mcp.server.tools import (
     find_references,
     get_message,
     get_thread,
+    list_available_lists,
     search_by_contributor,
     search_emails,
 )
@@ -54,20 +55,24 @@ def create_server() -> FastMCP:
         analyzing threads.
 
         Available tools:
+        - list_available_lists: List all indexed mailing lists (dev@, users@, etc.)
         - search_emails: Full-text search across email archives (with optional from_address filter)
         - search_by_contributor: Find all emails from a specific contributor
         - get_message: Retrieve a specific message by ID
         - get_thread: Retrieve an entire email thread
         - find_references: Find emails referencing JIRA issues or GitHub PRs
 
-        The archives include discussions from dev@maven.apache.org and other
-        Maven project mailing lists, indexed with metadata extraction for
+        The archives include discussions from dev@maven.apache.org, users@maven.apache.org,
+        and other Maven project mailing lists, indexed with metadata extraction for
         JIRA references, GitHub references, version numbers, and decisions.
+
+        Use list_available_lists first to see which mailing lists are indexed.
         """,
         debug=settings.log_level == "DEBUG",
     )
 
     # Register tools
+    mcp.add_tool(list_available_lists)
     mcp.add_tool(search_emails)
     mcp.add_tool(search_by_contributor)
     mcp.add_tool(get_message)
@@ -91,6 +96,7 @@ def create_server() -> FastMCP:
             "name": "maven-mail-mcp",
             "version": "1.0.0",
             "tools": [
+                {"name": "list_available_lists", "description": "List indexed mailing lists"},
                 {"name": "search_emails", "description": "Search archives"},
                 {"name": "search_by_contributor", "description": "Find by contributor"},
                 {"name": "get_message", "description": "Get message by ID"},
@@ -104,7 +110,7 @@ def create_server() -> FastMCP:
         "mcp_server_created",
         name="maven-mail-mcp",
         tools=[
-            "search_emails", "search_by_contributor",
+            "list_available_lists", "search_emails", "search_by_contributor",
             "get_message", "get_thread", "find_references"
         ],
     )
