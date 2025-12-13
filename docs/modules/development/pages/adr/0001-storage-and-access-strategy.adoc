@@ -28,11 +28,11 @@ Accepted
 
 == Context
 
-The mail-mcp project needs to make Apache Maven mailing list archives accessible to LLMs via MCP (Model Context Protocol). The data consists of 20+ years of email discussions (276+ monthly mbox files, ~743MB) from various Apache Maven mailing lists (dev@, users@, etc.).
+The mail-mcp project needs to make Apache Maven mailing list archives accessible to LLMs via MCP (Model Context Protocol). The data consists of 20+ years of email discussions (~560 monthly mbox files, ~1.5GB) from Apache Maven mailing lists (dev@ and users@).
 
 === Data Characteristics
 
-* **Volume**: 743MB currently, growing monthly
+* **Volume**: ~1.5GB currently (dev@ ~750MB, users@ ~800MB), growing monthly
 * **Format**: mbox (standard Unix mailbox format)
 * **Structure**: Email messages with threads (In-Reply-To, References headers)
 * **Source**: Apache Ponymail Foal REST API (https://lists.apache.org/api/mbox.lua)
@@ -112,7 +112,7 @@ We will implement a **database-backed architecture using Elasticsearch** as the 
 * **Temporal queries**: Native date range filtering and aggregations
 * **Future extensibility**: Built-in vector search support for semantic queries
 * **Mature ecosystem**: Well-documented, widely deployed, strong tooling
-* **Performance**: Handles 743MB+ efficiently with room to scale
+* **Performance**: Handles 1.5GB+ efficiently with room to scale
 * **Decision tracking**: Can model decision lifecycle via status fields and date ranges
 * **Cross-reference support**: Easy to index and query external references (JIRA-NNNN, PR #NNN)
 
@@ -168,7 +168,7 @@ Rationale:
 * Excellent full-text search capabilities (inverted indices, relevance scoring)
 * Mature, well-documented, widely deployed
 * Supports vector search (for future semantic capabilities)
-* Handles 743MB+ datasets efficiently
+* Handles 1.5GB+ datasets efficiently
 * Good aggregation support (e.g., "top contributors", "activity over time")
 
 Implementation considerations:
@@ -342,7 +342,7 @@ The MCP will expose tools such as:
 * **Flexible deployment**: ES for search-heavy, Neo4j for thread-heavy, SQLite for embedded
 * **Regenerable**: Can rebuild entire system from Apache API
 * **Performant**: Database acceleration enables fast queries on 20+ years of data
-* **Scalable**: ES/Neo4j handle growth beyond current 743MB
+* **Scalable**: ES/Neo4j handle growth beyond current 1.5GB
 * **Container-native**: Docker Compose for dev, K8s for production
 * **Thread-aware**: Proper representation of email discussions as graphs/relationships
 * **Multiple backends**: Can choose optimal storage per deployment scenario
@@ -351,7 +351,7 @@ The MCP will expose tools such as:
 
 * **Infrastructure complexity**: Requires running ES or Neo4j container
 * **Resource overhead**: ES/Neo4j consume significant RAM (1GB+ each)
-* **Sync latency**: Initial population takes time (parse 743MB, index)
+* **Sync latency**: Initial population takes time (parse 1.5GB, index)
 * **Storage backend abstraction**: More code to maintain multiple implementations
 * **Database management**: Backup/restore, monitoring, tuning
 

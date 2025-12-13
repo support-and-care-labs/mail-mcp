@@ -28,20 +28,23 @@ Data files are not tracked in Git as they can be regenerated at any time.
 [source]
 ----
 data/
-└── dev/                        # Maven dev@ mailing list
+├── dev/                        # Maven dev@ mailing list
+│   ├── 2002-07.mbox
+│   ├── ...
+│   └── 2025-12.mbox
+└── users/                      # Maven users@ mailing list
     ├── 2002-11.mbox
-    ├── 2002-12.mbox
     ├── ...
-    └── 2024-12.mbox
+    └── 2025-12.mbox
 ----
 
 == mbox Files
 
 Format:: Standard Unix mbox format
 Content:: ASCII/SGML text with email messages
-Size:: ~743MB total for dev@ list (276+ monthly archives)
+Size:: ~1.5GB total for dev@ and users@ lists combined (~750MB each)
 Naming:: `YYYY-MM.mbox` (e.g., `2024-10.mbox`)
-Period:: November 2002 to present
+Period:: dev@ from July 2002, users@ from November 2002
 
 [IMPORTANT]
 ====
@@ -189,8 +192,9 @@ docker compose down -v
 == Data Size Considerations
 
 Per-month size:: Typically 1-5 MB per mbox file
-Total archive:: ~743 MB for 22 years of dev@ list
+Total archive:: ~1.5 GB for dev@ and users@ lists (22+ years each)
 Elasticsearch index:: Approximately 2-3x the mbox size (depends on analysis settings)
+Recommended disk space:: ~2 GB for mbox files, ~5 GB including Elasticsearch indices
 
 [NOTE]
 ====
@@ -200,20 +204,20 @@ For continuous integration or new development environments, retrieve only the da
 
 == Multiple Mailing Lists
 
-The system supports multiple Apache mailing lists:
+The system indexes the following Apache Maven mailing lists:
 
-dev@maven.apache.org:: Main development discussions (default)
-users@maven.apache.org:: User questions and support
-issues@maven.apache.org:: Automated issue notifications
+dev@maven.apache.org:: Main development discussions (~750 MB, from July 2002)
+users@maven.apache.org:: User questions and support (~800 MB, from November 2002)
 
-Each list can be stored in its own subdirectory:
+Additional lists can be added (issues@, commits@, announce@) by configuring `MAIL_MCP_MAILING_LISTS`.
+
+Each list is stored in its own subdirectory and indexed separately:
 
 [source]
 ----
 data/
-├── dev/
-├── users/
-└── issues/
+├── dev/      # → Elasticsearch index: maven-dev
+└── users/    # → Elasticsearch index: maven-users
 ----
 
 == Backup and Restore

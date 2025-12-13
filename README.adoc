@@ -32,14 +32,23 @@ MCP server for accessing and analyzing Apache Maven mailing list archives.
 docker compose up -d
 
 # Retrieve mailing list archives (first time only)
+# For dev@maven.apache.org:
 for year in $(seq 2002 $(date +%Y)); do
   for month in $(seq -w 1 12); do
-    docker compose exec scheduler retrieve-mbox --date ${year}-${month} || true
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --output-dir /app/data/dev || true
+  done
+done
+
+# For users@maven.apache.org:
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --list users@maven.apache.org --output-dir /app/data/users || true
   done
 done
 
 # Index all downloaded mbox files
-docker compose exec scheduler index-mbox --directory /app/data/dev/
+docker compose exec scheduler index-mbox --directory /app/data/dev/ --list dev@maven.apache.org
+docker compose exec scheduler index-mbox --directory /app/data/users/ --list users@maven.apache.org
 ----
 
 === Connect MCP Client

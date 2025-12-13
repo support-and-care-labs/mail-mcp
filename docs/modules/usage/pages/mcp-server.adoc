@@ -48,19 +48,27 @@ Before using the MCP, retrieve the mailing list archives:
 
 [source,bash]
 ----
-# Retrieve all dev mailing list archives (2002-present, ~700MB)
+# Retrieve dev@ archives (July 2002-present, ~750MB)
 for year in $(seq 2002 $(date +%Y)); do
   for month in $(seq -w 1 12); do
-    docker compose exec scheduler retrieve-mbox --date ${year}-${month} || true
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --output-dir /app/data/dev || true
+  done
+done
+
+# Retrieve users@ archives (Nov 2002-present, ~800MB)
+for year in $(seq 2002 $(date +%Y)); do
+  for month in $(seq -w 1 12); do
+    docker compose exec scheduler retrieve-mbox --date ${year}-${month} --list users@maven.apache.org --output-dir /app/data/users || true
   done
 done
 
 # Index all downloaded mbox files
-docker compose exec scheduler index-mbox --directory /app/data/dev/
+docker compose exec scheduler index-mbox --directory /app/data/dev/ --list dev@maven.apache.org
+docker compose exec scheduler index-mbox --directory /app/data/users/ --list users@maven.apache.org
 ----
 
-TIP: This initial retrieval takes time but only needs to be done once.
-The scheduler container automatically updates the current month's archive hourly.
+TIP: Initial retrieval (~1.5GB total) takes time but only needs to be done once.
+The scheduler container automatically updates both lists' archives hourly.
 
 === 3. Verify Services
 

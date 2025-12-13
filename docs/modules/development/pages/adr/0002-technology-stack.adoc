@@ -47,7 +47,7 @@ API access:: Apache Ponymail API integration established (HTTP GET)
 
 Self-contained:: Minimal external dependencies
 Maintainable:: Clear code, good documentation, standard patterns
-Performance:: Handle 743MB+ data efficiently
+Performance:: Handle 1.5GB+ data efficiently
 Future-proof:: Support for vector search, additional backends
 
 == Decision
